@@ -6,30 +6,10 @@ interface RetroSidebarProps {
 }
 
 export const RetroSidebar: React.FC<RetroSidebarProps> = ({ setActiveTab }) => {
-  const [visitorCount, setVisitorCount] = useState<string>('0001428');
   const [discordMembers, setDiscordMembers] = useState<number>(15);
   const [discordOnline, setDiscordOnline] = useState<number>(7);
 
   useEffect(() => {
-    // Persistent visitor counter logic
-    const BASE_COUNT = 1428;
-    const STORAGE_KEY = 'kesh_visitor_count';
-    const SESSION_KEY = 'kesh_session_tracked';
-
-    let current = parseInt(localStorage.getItem(STORAGE_KEY) || `${BASE_COUNT}`, 10);
-    if (isNaN(current) || current < BASE_COUNT) {
-      current = BASE_COUNT;
-    }
-
-    // Only increment once per browser session
-    if (!sessionStorage.getItem(SESSION_KEY)) {
-      current += 1;
-      localStorage.setItem(STORAGE_KEY, current.toString());
-      sessionStorage.setItem(SESSION_KEY, 'true');
-    }
-
-    setVisitorCount(current.toString().padStart(7, '0'));
-
     // Fetch live Discord member and online count
     fetch('https://discord.com/api/v9/invites/Gzd6ec6m?with_counts=true')
       .then((res) => res.json())
@@ -45,20 +25,6 @@ export const RetroSidebar: React.FC<RetroSidebarProps> = ({ setActiveTab }) => {
       })
       .catch(() => {
         // Fallback to current verified count
-      });
-
-    // Try live counter API asynchronously for cross-device count (fail-safe)
-    fetch('https://api.counterapi.dev/v1/keshos_sneakdeak_net/visits/up')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && typeof data.count === 'number') {
-          const total = BASE_COUNT + data.count;
-          setVisitorCount(total.toString().padStart(7, '0'));
-          localStorage.setItem(STORAGE_KEY, total.toString());
-        }
-      })
-      .catch(() => {
-        // Silently use localStorage fallback
       });
   }, []);
 
@@ -160,17 +126,6 @@ export const RetroSidebar: React.FC<RetroSidebarProps> = ({ setActiveTab }) => {
           >
             Исходный код на GitHub
           </a>
-        </div>
-      </div>
-
-      {/* Real Visitor Counter */}
-      <div className="ms-sidebar-box" style={{ textAlign: 'center', padding: '10px 8px' }}>
-        <div style={{ fontSize: '10px', color: '#555', marginBottom: '6px', fontWeight: 'bold' }}>
-          Счётчик обращений к сайту:
-        </div>
-        <div className="retro-counter-box" title="Реальное количество посещений">{visitorCount}</div>
-        <div style={{ fontSize: '9px', color: '#888', marginTop: '4px' }}>
-          kesh.sneakdeak.net
         </div>
       </div>
     </aside>
