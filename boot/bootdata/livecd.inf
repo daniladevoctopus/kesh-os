@@ -4,6 +4,7 @@ Signature = "$Windows NT$"
 [DelReg]
 
 HKLM,"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders"
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\Notify"
 
 [AddReg]
 
@@ -24,8 +25,18 @@ HKLM,"SYSTEM\CurrentControlSet\Services\Cdrom","Start",0x00010001,0x00000000
 ; Reset BootExecute to an empty value: AutoChk should not start in MiniNT mode
 HKLM,"SYSTEM\CurrentControlSet\Control\Session Manager","BootExecute",0x00010000,""
 
-; Shell
-HKLM,"SYSTEM\Setup","CmdLine",0x00020000,"setup -mini"
+; LiveCD: Boot directly into desktop, no setup!
+HKLM,"SYSTEM\Setup","SetupType",0x00010001,0x00000000
+HKLM,"SYSTEM\Setup","SystemSetupInProgress",0x00010001,0x00000000
+HKLM,"SYSTEM\Setup","CmdLine",0x00020000,""
+
+; Auto logon as Administrator directly into Explorer
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon","AutoAdminLogon",0x00000000,"1"
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon","DefaultUserName",0x00000000,"Administrator"
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon","DefaultPassword",0x00000000,""
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon","DisableCAD",0x00010001,1
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon","Shell",0x00020000,"%SystemRoot%\explorer.exe"
+HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon","Userinit",0x00020000,"%SystemRoot%\system32\userinit.exe"
 
 ; User Profile List
 HKLM,"SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList",,0x00000012

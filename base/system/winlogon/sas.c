@@ -1793,7 +1793,7 @@ InitializeSAS(
     }
 
     if (!SetDefaultLanguage(NULL))
-        return FALSE;
+        WARN("WL: SetDefaultLanguage() failed\n");
 
     ret = TRUE;
 

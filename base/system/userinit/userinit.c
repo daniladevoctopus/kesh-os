@@ -802,7 +802,7 @@ Restart:
             ERR("USERINIT: StartShell returned %d\n", Success);
             if (pEnvironment)
                 DestroyEnvironmentBlock(pEnvironment);
-            if (Success)
+            if (Success && !bIsLiveCD)
                 NotifyLogon();
             break;
         }
