@@ -20,6 +20,17 @@ elseif(NOT DEFINED NO_ROSSYM)
     set(NO_ROSSYM FALSE)
 endif()
 
+if((ARCH STREQUAL "amd64") AND (CMAKE_C_COMPILER_ID STREQUAL "GNU"))
+    execute_process(
+        COMMAND ${CMAKE_C_COMPILER} --print-file-name=plugin
+        OUTPUT_VARIABLE _GCC_PLUGIN_DIR)
+    string(STRIP "${_GCC_PLUGIN_DIR}" _GCC_PLUGIN_DIR)
+    if(NOT EXISTS "${_GCC_PLUGIN_DIR}/include/gcc-plugin.h")
+        set(USE_DUMMY_PSEH 1)
+        set(USE_PSEH3 0)
+    endif()
+endif()
+
 if(NOT DEFINED USE_PSEH3)
     set(USE_PSEH3 1)
 endif()

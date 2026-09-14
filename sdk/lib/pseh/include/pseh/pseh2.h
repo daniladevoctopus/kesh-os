@@ -40,7 +40,7 @@
 
 #define __endtry
 
-#elif defined(__GNUC__) && !defined(__clang__) && defined(_M_AMD64)
+#elif defined(__GNUC__) && !defined(__clang__) && defined(_M_AMD64) && !defined(_USE_DUMMY_PSEH)
 
 #include "pseh2_64.h"
 

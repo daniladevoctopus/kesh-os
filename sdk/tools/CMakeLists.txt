@@ -50,7 +50,9 @@ add_subdirectory(wpp)
 add_subdirectory(xml2sdb)
 
 if ((ARCH STREQUAL "amd64") AND (TARGET_COMPILER_ID STREQUAL "GNU"))
-    add_subdirectory(gcc_plugin_seh)
+    if(DEFINED GCC_PLUGIN_DIR AND EXISTS "${GCC_PLUGIN_DIR}/include/gcc-plugin.h")
+        add_subdirectory(gcc_plugin_seh)
+    endif()
 endif()
 
 if (TARGET_BUILD_TYPE)
