@@ -190,9 +190,12 @@ add_compile_options(
     -Wno-format
     -Wno-maybe-uninitialized
     -Wno-nonnull-compare
-    -Wno-error=array-parameter
     -Wno-error=misleading-indentation
 )
+
+if(CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL 11.0)
+    add_compile_options(-Wno-error=array-parameter)
+endif()
 
 if(ARCH STREQUAL "arm")
     add_compile_options(-Wno-attributes)
