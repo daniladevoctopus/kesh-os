@@ -15,6 +15,7 @@ export const DownloadsPage: React.FC = () => {
     filename: 'bootcd.iso',
     size: '390 MB',
     date: '14 сентября 2026 г.',
+    architectures: 'x86 (IA-32, 32-бит)',
     md5: 'b8ae81e440d6da5e924f1b2fd05d77b1',
     sha256: '9ec8664ec36d7d44122c870d6cdee2dafd82d568911b5194b90dc74c1e1cd0ee',
   };
@@ -25,7 +26,7 @@ export const DownloadsPage: React.FC = () => {
         <div className="ms-section-title">
           <span>Центр загрузки KeshOS (Download Center)</span>
         </div>
-        <span style={{ fontSize: '10px', color: '#666' }}>Официальный образ системы</span>
+        <span style={{ fontSize: '10px', color: '#666' }}>Официальный дистрибутив операционной системы</span>
       </div>
 
       {/* Main Single Download Card */}
@@ -62,7 +63,7 @@ export const DownloadsPage: React.FC = () => {
         </div>
 
         <p style={{ marginBottom: '12px', color: '#333', lineHeight: '1.6' }}>
-          Теперь вам не нужно выбирать между разными версиями: единый гибридный образ <strong>BootCD</strong> включает в себя как возможность мгновенной работы без установки прямо из оперативной памяти (Live RAM-диск), так и полный мастер чистой установки на жесткий диск или SSD.
+          Теперь вам не нужно выбирать между разными версиями: единый гибридный образ <strong>BootCD</strong> включает в себя как возможность мгновенной работы без установки прямо из оперативной памяти (Live RAM-диск), так и полный мастер чистой установки на жесткий диск или SSD. Образ оптимизирован для платформы {downloadInfo.architectures}.
         </p>
 
         {/* Action Row */}
@@ -80,19 +81,30 @@ export const DownloadsPage: React.FC = () => {
           }}
         >
           <div>
-            <div>Файл: <code>{downloadInfo.filename}</code></div>
+            <div>Файл: <code>{downloadInfo.filename}</code> ({downloadInfo.size})</div>
             <div style={{ fontSize: '10px', color: '#666', marginTop: '2px' }}>
-              Дата сборки: {downloadInfo.date} | Поддержка USB 2.0 / 3.0 / CD-ROM
+              Дата сборки: {downloadInfo.date} | Архитектура: {downloadInfo.architectures} | Зеркало: Сервер друга &amp; Домен
             </div>
           </div>
-          <a
-            href={`/${downloadInfo.filename}`}
-            download={downloadInfo.filename}
-            className="ms-hero-btn"
-            style={{ fontSize: '12px', padding: '6px 18px' }}
-          >
-            Скачать BootCD ({downloadInfo.size})
-          </a>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <a
+              href={`/${downloadInfo.filename}`}
+              download={downloadInfo.filename}
+              className="ms-hero-btn"
+              style={{ fontSize: '12px', padding: '6px 18px' }}
+            >
+              Скачать BootCD ({downloadInfo.size})
+            </a>
+            <a
+              href="https://github.com/daniladevoctopus/kesh-os/releases"
+              target="_blank"
+              rel="noreferrer"
+              className="win-btn"
+              style={{ fontSize: '11px', padding: '5px 12px', textDecoration: 'none' }}
+            >
+              GitHub Releases
+            </a>
+          </div>
         </div>
 
         {/* What's inside section */}

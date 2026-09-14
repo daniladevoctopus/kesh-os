@@ -12,6 +12,26 @@ interface HomePageProps {
 
 export const HomePage: React.FC<HomePageProps> = ({ setActiveTab }) => {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [discordMembers, setDiscordMembers] = useState<number>(15);
+  const [discordOnline, setDiscordOnline] = useState<number>(7);
+
+  React.useEffect(() => {
+    fetch('https://discord.com/api/v9/invites/Gzd6ec6m?with_counts=true')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data) {
+          if (typeof data.approximate_member_count === 'number') {
+            setDiscordMembers(data.approximate_member_count);
+          }
+          if (typeof data.approximate_presence_count === 'number') {
+            setDiscordOnline(data.approximate_presence_count);
+          }
+        }
+      })
+      .catch(() => {
+        // Fallback to verified real stats
+      });
+  }, []);
 
   // Gallery slots strictly for the current OS (KeshOS Brownie 0.8.2)
   const brownieGallerySlots = [
@@ -75,7 +95,7 @@ export const HomePage: React.FC<HomePageProps> = ({ setActiveTab }) => {
           <p className="ms-hero-desc">
             Быстрая, компактная операционная система с душой классики и поддержкой Win32-приложений. 
             Кодовое название текущего выпуска — <strong>«Brownie»</strong>. 
-            Единый универсальный гибридный образ BootCD объединяет запуск прямо в оперативную память (RAM Boot) и полную чистую установку на жесткий диск.
+            Единый универсальный гибридный образ BootCD объединяет стабильный запуск прямо в оперативную память (Live RAM Boot) и полную чистую установку на жесткий диск.
           </p>
           <div className="ms-hero-action">
             <button
@@ -85,6 +105,13 @@ export const HomePage: React.FC<HomePageProps> = ({ setActiveTab }) => {
             >
               Скачать KeshOS BootCD (389 MB)
             </button>
+            <a
+              href="#community"
+              className="win-btn"
+              style={{ padding: '6px 14px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+            >
+              Сообщество & Команда &gt;&gt;
+            </a>
             <a
               href="#history"
               className="win-btn"
@@ -111,6 +138,102 @@ export const HomePage: React.FC<HomePageProps> = ({ setActiveTab }) => {
           />
           <div style={{ fontSize: '9px', color: '#ffde7a', marginTop: '4px' }}>
             KeshOS (Кодовое название: Brownie)
+          </div>
+        </div>
+      </div>
+
+      {/* Community & Team Showcase */}
+      <div id="community" className="ms-card" style={{ marginBottom: '20px', border: '1px solid #7f9db9', background: '#fcfdfe' }}>
+        <div className="ms-card-header" style={{ justifyContent: 'space-between' }}>
+          <span>Сообщество SneakDeak Technologies & Сервер Проекта</span>
+          <span style={{ fontSize: '10px', color: '#006600', fontWeight: 'bold' }}>
+            ● Сервер работает онлайн
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px', marginTop: '8px' }}>
+          {/* Discord Server Card */}
+          <div style={{ background: '#f5f7fc', border: '1px solid #c2d5ec', padding: '12px', borderRadius: '2px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <div style={{ background: '#5865F2', color: '#fff', width: '28px', height: '28px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                D
+              </div>
+              <div>
+                <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#003399' }}>
+                  SneakDeak Technologies
+                </div>
+                <div style={{ fontSize: '10px', color: '#555' }}>
+                  Официальный Discord-сервер сообщества
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', margin: '8px 0', fontSize: '11px' }}>
+              <span style={{ color: '#2da44e', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#2da44e' }}></span>
+                {discordOnline} сейчас в сети
+              </span>
+              <span style={{ color: '#57606a', fontWeight: 'bold' }}>
+                👥 {discordMembers} участников
+              </span>
+            </div>
+
+            <p style={{ fontSize: '10px', color: '#444', lineHeight: '1.4', marginBottom: '10px' }}>
+              Живое общение с разработчиками, предложения новых фич, помощь в настройке драйверов и новости о сборках KeshOS.
+            </p>
+
+            <a
+              href="https://discord.gg/Gzd6ec6m"
+              target="_blank"
+              rel="noreferrer"
+              className="win-btn win-btn-primary"
+              style={{ width: '100%', justifyContent: 'center', textDecoration: 'none', fontWeight: 'bold' }}
+            >
+              Присоединиться к серверу ({discordMembers} чел.)
+            </a>
+          </div>
+
+          {/* Development & Hosting Card */}
+          <div style={{ background: '#f5f7fc', border: '1px solid #c2d5ec', padding: '12px', borderRadius: '2px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <div style={{ background: '#24292e', color: '#fff', width: '28px', height: '28px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                K
+              </div>
+              <div>
+                <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#24292e' }}>
+                  Разработка и Хостинг
+                </div>
+                <div style={{ fontSize: '10px', color: '#555' }}>
+                  Авторский проект &amp; Сервер друга
+                </div>
+              </div>
+            </div>
+
+            <div style={{ fontSize: '11px', lineHeight: '1.5', color: '#333', marginBottom: '10px' }}>
+              <div><strong>Создатель &amp; Архитектор:</strong> danila_dev (DanilaDevOctopus)</div>
+              <div><strong>Репозиторий:</strong> <a href="https://github.com/daniladevoctopus/kesh-os" target="_blank" rel="noreferrer">daniladevoctopus/kesh-os</a></div>
+              <div><strong>Хостинг:</strong> Выделенный сервер друга с прямым каналом для раздачи ISO и веб-сайта</div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <a
+                href="https://github.com/daniladevoctopus/kesh-os"
+                target="_blank"
+                rel="noreferrer"
+                className="win-btn"
+                style={{ flex: 1, justifyContent: 'center', textDecoration: 'none' }}
+              >
+                GitHub репозиторий
+              </a>
+              <button
+                type="button"
+                className="win-btn"
+                onClick={() => setActiveTab('downloads')}
+                style={{ flex: 1, justifyContent: 'center' }}
+              >
+                Зеркало загрузки
+              </button>
+            </div>
           </div>
         </div>
       </div>

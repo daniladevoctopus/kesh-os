@@ -48,7 +48,7 @@ export const Header: React.FC<HeaderProps> = ({ onSearch, searchQuery, setSearch
           </a>
 
           <a
-            href="https://github.com"
+            href="https://github.com/daniladevoctopus/kesh-os"
             target="_blank"
             rel="noreferrer"
             className="modern-btn modern-btn-github"
