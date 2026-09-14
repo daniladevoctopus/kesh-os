@@ -1,0 +1,24 @@
+#include <windows.h>
+#include "resource.h"
+
+#define REACTOS_STR_FILE_DESCRIPTION  "KeshOS Out-Of-Box Experience (OOBE)"
+#define REACTOS_STR_INTERNAL_NAME     "oobe"
+#define REACTOS_STR_ORIGINAL_FILENAME "oobe.exe"
+#include <reactos/version.rc>
+
+IDI_OOBE ICON "res/oobe.ico"
+
+IDB_MASCOT_0 BITMAP "res/mascot_wave_0.bmp"
+IDB_MASCOT_1 BITMAP "res/mascot_wave_1.bmp"
+IDB_MASCOT_2 BITMAP "res/mascot_wave_2.bmp"
+IDB_MASCOT_3 BITMAP "res/mascot_wave_3.bmp"
+
+IDB_GLOBE_0  BITMAP "res/globe_net_0.bmp"
+IDB_GLOBE_1  BITMAP "res/globe_net_1.bmp"
+IDB_GLOBE_2  BITMAP "res/globe_net_2.bmp"
+IDB_GLOBE_3  BITMAP "res/globe_net_3.bmp"
+
+IDB_EULA_SHIELD BITMAP "res/eula_shield.bmp"
+IDB_THEME_BROWNIE BITMAP "res/theme_brownie.bmp"
+IDB_THEME_CLASSIC BITMAP "res/theme_classic.bmp"
+IDB_ACCOUNT_AVATAR BITMAP "res/account_avatar.bmp"

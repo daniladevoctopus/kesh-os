@@ -1,0 +1,34 @@
+#pragma once
+
+#define IDI_OOBE 100
+
+#define IDB_MASCOT_0 200
+#define IDB_MASCOT_1 201
+#define IDB_MASCOT_2 202
+#define IDB_MASCOT_3 203
+
+#define IDB_GLOBE_0  210
+#define IDB_GLOBE_1  211
+#define IDB_GLOBE_2  212
+#define IDB_GLOBE_3  213
+
+#define IDB_EULA_SHIELD 220
+#define IDB_THEME_BROWNIE 230
+#define IDB_THEME_CLASSIC 231
+#define IDB_ACCOUNT_AVATAR 240
+
+#define IDC_BTN_NEXT    1001
+#define IDC_BTN_BACK    1002
+#define IDC_BTN_SKIP    1003
+#define IDC_CHK_EULA    1004
+#define IDC_CARD_BROWNIE 1005
+#define IDC_CARD_CLASSIC 1006
+#define IDC_EDT_USERNAME 1007
+#define IDC_EDT_PASSWORD 1008
+#define IDC_EDT_EULA     1009
+
+#define IDT_ANIM    101
+#define IDT_LOADER  102
+#define IDT_FINISH  103
+#define IDT_GREET   104
+#define IDT_MELT    105

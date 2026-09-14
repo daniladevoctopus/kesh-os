@@ -1,0 +1,194 @@
+"""
+KESHOS BETA 0.8.0 "BROWNIE" v2
+- In-place string rebranding of en-US.pak and ru.pak (openFyde -> KeshOS)
+- Keep CHROMEOS_RELEASE_NAME=Chromium OS in lsb-release for 100% C++ startup check pass.
+- System description: KeshOS Beta 0.8.0 "Brownie" (SneakDeak Team).
+"""
+import os, sys, struct, gzip, subprocess
+
+qemu_img = r'D:\qemu\qemu-img.exe'
+raw_clean = r'D:\openfyde\keshos_clean.img'
+dst_vmdk = r'c:\Users\DanDevXP\Desktop\keshoos\releases\KeshOS-VM\KeshOS-Beta-0.8.0-disk1.vmdk'
+root_a_src = r'D:\openfyde\keshos_raw.img'
+
+part_start = 163577856
+part_size = 4294967296
+
+print('==================================================================')
+print('  KESHOS BETA 0.8.0 "BROWNIE" v2 - FULL UI REBRANDING             ')
+print('==================================================================')
+
+# 1. Restore pure partition
+print('1. Restoring pure ROOT-A partition bytes...')
+with open(root_a_src, 'rb') as src, open(raw_clean, 'r+b') as dst:
+    src.seek(part_start); dst.seek(part_start)
+    left = part_size
+    while left > 0:
+        c = min(32*1024*1024, left)
+        d = src.read(c)
+        if not d: break
+        dst.write(d); left -= len(d)
+print('[OK] Partition restored successfully!')
+
+def get_sb(f):
+    f.seek(part_start+1024); sb=f.read(1024)
+    bs=1024<<struct.unpack('<I',sb[24:28])[0]
+    ipg=struct.unpack('<I',sb[40:44])[0]
+    isz=struct.unpack('<H',sb[88:90])[0]
+    return bs,ipg,isz
+
+def read_inode(f,ino,bs,ipg,isz):
+    g=(ino-1)//ipg; idx=(ino-1)%ipg
+    f.seek(part_start+bs+g*32)
+    tbl=struct.unpack('<I',f.read(32)[8:12])[0]
+    ipos=part_start+tbl*bs+idx*isz
+    f.seek(ipos); idata=f.read(isz)
+    isize=struct.unpack('<I',idata[4:8])[0]
+    iblocks=struct.unpack('<15I',idata[40:100])
+    blocks=[b for b in iblocks[:12] if b]
+    if iblocks[12]:
+        f.seek(part_start+iblocks[12]*bs)
+        for b in struct.unpack(f'<{bs//4}I',f.read(bs)):
+            if b: blocks.append(b)
+    out=bytearray()
+    for b in blocks:
+        f.seek(part_start+b*bs); out.extend(f.read(bs))
+    return bytes(out[:isize])
+
+def write_inode(f,ino,data,bs,ipg,isz):
+    g=(ino-1)//ipg; idx=(ino-1)%ipg
+    f.seek(part_start+bs+g*32)
+    tbl=struct.unpack('<I',f.read(32)[8:12])[0]
+    ipos=part_start+tbl*bs+idx*isz
+    f.seek(ipos); idata=bytearray(f.read(isz))
+    iblocks=struct.unpack('<15I',idata[40:100])
+    blocks=[b for b in iblocks[:12] if b]
+    if iblocks[12]:
+        f.seek(part_start+iblocks[12]*bs)
+        for b in struct.unpack(f'<{bs//4}I',f.read(bs)):
+            if b: blocks.append(b)
+    left=len(data)
+    for b in blocks:
+        f.seek(part_start+b*bs)
+        c=min(bs,left)
+        f.write(data[len(data)-left:len(data)-left+c])
+        left-=c
+        if left<=0: break
+    struct.pack_into('<I',idata,4,len(data))
+    f.seek(ipos); f.write(idata)
+
+def safe_rebrand(data):
+    replacements = [
+        (b'FydeOS', b'KeshOS'),
+        (b'fydeos', b'keshos'),
+        (b'FYDEOS', b'KESHOS'),
+        (b'openFyde', b'KeshOS  '),
+        (b'openfyde', b'keshos  '),
+        (b'OPENFYDE', b'KESHOS  '),
+        (b'OpenFyde', b'KeshOS  '),
+        (b'fydeos.local', b'kesh.local  '),
+        (b'Fyde OS', b'KeshOS '),
+    ]
+    count = 0
+    for old, new in replacements:
+        assert len(old)==len(new)
+        n = data.count(old)
+        if n: data = data.replace(old, new); count += n
+    return data, count
+
+# /etc files
+new_issue = b'''\x1b[1;32m
+  KeshOS Beta 0.8.0 "Brownie" - SneakDeak Edition
+\x1b[0m
+Welcome to KeshOS by SneakDeak Team!
+Codename: Brownie
+Local Account Domain: @kesh.local
+
+'''
+
+new_os_release = b'''ID=keshos
+HOME_URL=https://keshos.org/
+SUPPORT_URL=https://keshos.org/support
+NAME=KeshOS
+BUG_REPORT_URL=https://keshos.org/bugs
+ANSI_COLOR=1;32
+PRETTY_NAME="KeshOS Beta 0.8.0 Brownie (SneakDeak Team)"
+VERSION="0.8.0 Brownie"
+VERSION_ID="0.8.0"
+BUILD_ID="16503.20.22.5"
+'''
+
+new_lsb = b'''CHROMEOS_RELEASE_APPID={D4D5E5BC-FF88-4522-9EB8-E4561D3F4236}
+CHROMEOS_BOARD_APPID={D4D5E5BC-FF88-4522-9EB8-E4561D3F4236}
+CHROMEOS_CANARY_APPID={D021AE22-761F-4D54-A94A-B06B05B79E51}
+DEVICETYPE=CHROMEBOOK
+CHROMEOS_RELEASE_NAME=Chromium OS
+CHROMEOS_AUSERVER=https://up.keshos.local/service/update2
+CHROMEOS_DEVSERVER=https://devserver.keshos.local:9999
+CHROMEOS_RELEASE_BUILDER_PATH=amd64-openfyde_vmware/R20-16503.20.0
+CHROMEOS_RELEASE_KEYSET=devkeys
+CHROMEOS_RELEASE_TRACK=stable-channel
+CHROMEOS_RELEASE_BUILD_TYPE=Developer Build - root
+CHROMEOS_RELEASE_DESCRIPTION=KeshOS Beta 0.8.0 "Brownie" (SneakDeak Team) stable-channel amd64-openfyde_vmware
+CHROMEOS_RELEASE_BOARD=amd64-openfyde_vmware
+CHROMEOS_RELEASE_BRANCH_NUMBER=20
+CHROMEOS_RELEASE_BUILD_NUMBER=16503
+CHROMEOS_RELEASE_CHROME_MILESTONE=144
+CHROMEOS_RELEASE_PATCH_NUMBER=22
+CHROMEOS_RELEASE_VERSION=16503.20.22.5
+GOOGLE_RELEASE=16503.20.22.5
+CHROMEOS_RELEASE_UNIBUILD=1
+'''
+
+eula = b'''<!doctype html>
+<html><head><meta charset="utf-8">
+<title>KeshOS Brownie - SneakDeak Team</title>
+<style>body{font-family:Roboto,sans-serif;padding:40px;background:#FDF8F7;color:#1C1B1F}
+.card{background:#fff;padding:36px;border-radius:28px;box-shadow:0 8px 30px rgba(0,0,0,.06);max-width:800px;margin:0 auto}
+h1{color:#4E342E;font-size:26px}h2{color:#795548;font-size:18px;margin-top:24px}</style>
+</head><body><div class="card">
+<h1>KeshOS Beta 0.8.0 &ldquo;Brownie&rdquo;</h1>
+<p>Developed by <strong>SneakDeak Team</strong>. Local accounts domain: <code>@kesh.local</code>.</p>
+</div></body></html>
+'''
+eula_gz = gzip.compress(eula, 9)
+
+print('2. Rebranding locale paks (en-US & ru)...')
+with open(raw_clean, 'r+b') as f:
+    bs, ipg, isz = get_sb(f)
+    
+    # 1. en-US.pak (Inode 34085)
+    en_us_raw = read_inode(f, 34085, bs, ipg, isz)
+    en_us_dec = gzip.decompress(en_us_raw)
+    en_us_rebranded, cnt_en = safe_rebrand(en_us_dec)
+    en_us_new_gz = gzip.compress(en_us_rebranded, 9)
+    write_inode(f, 34085, en_us_new_gz, bs, ipg, isz)
+    print(f'  [+] en-US.pak: {cnt_en} string replacements ({len(en_us_raw)} -> {len(en_us_new_gz)} gz bytes)')
+
+    # 2. ru.pak (Inode 34114)
+    ru_raw = read_inode(f, 34114, bs, ipg, isz)
+    ru_dec = gzip.decompress(ru_raw)
+    ru_rebranded, cnt_ru = safe_rebrand(ru_dec)
+    ru_new_gz = gzip.compress(ru_rebranded, 9)
+    write_inode(f, 34114, ru_new_gz, bs, ipg, isz)
+    print(f'  [+] ru.pak: {cnt_ru} string replacements ({len(ru_raw)} -> {len(ru_new_gz)} gz bytes)')
+
+    # 3. /etc and EULA
+    print('3. Injecting /etc files and EULA...')
+    write_inode(f, 6745, new_issue, bs, ipg, isz);   print('[+] /etc/issue (Brownie)')
+    write_inode(f, 6797, new_os_release, bs, ipg, isz); print('[+] /etc/os-release (Brownie)')
+    write_inode(f, 6675, new_lsb, bs, ipg, isz);     print('[+] /etc/lsb-release (Brownie + Chromium OS compat)')
+    write_inode(f, 34786, eula_gz, bs, ipg, isz);     print('[+] EULA (Brownie)')
+
+# 4. Convert to VMDK
+print('4. Converting to fresh KeshOS VMDK...')
+if os.path.exists(dst_vmdk):
+    try: os.remove(dst_vmdk)
+    except: pass
+subprocess.run([qemu_img, 'convert', '-f', 'raw', '-O', 'vmdk', '-o',
+                'subformat=monolithicSparse', raw_clean, dst_vmdk], check=True)
+
+print('==================================================================')
+print('  [DONE] KESHOS BROWNIE v2 READY!                                ')
+print(f'  OUTPUT: {dst_vmdk}')
+print('==================================================================')

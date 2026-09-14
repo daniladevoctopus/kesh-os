@@ -1,0 +1,27 @@
+#include <windows.h>
+#include <commctrl.h>
+#include "resource.h"
+
+#pragma code_page(65001)
+
+LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+
+IDI_APPICON ICON "res/errortest.ico"
+
+IDD_ERRORTEST DIALOGEX 0, 0, 240, 150
+STYLE DS_SHELLFONT | DS_CENTER | WS_MINIMIZEBOX | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+CAPTION "KeshOS Brownie — Тест звуков и ошибки"
+FONT 8, "MS Shell Dlg"
+BEGIN
+    ICON            IDI_APPICON, IDC_STATIC, 14, 14, 21, 20
+    LTEXT           "KeshOS NT 0.8.0 Beta ""Brownie""", IDC_STATIC, 44, 12, 185, 12, SS_NOPREFIX
+    LTEXT           "Панель быстрой проверки фирменных звуков и диалога ошибки.", IDC_STATIC, 44, 24, 185, 18
+    
+    CONTROL         "", IDC_STATIC, "Static", SS_ETCHEDHORZ, 14, 46, 212, 1
+    
+    PUSHBUTTON      "▶  Звук запуска (Mac Chime)", IDC_BTN_STARTUP, 25, 56, 190, 18
+    PUSHBUTTON      "⚠  Вызвать системную ошибку", IDC_BTN_ERROR, 25, 80, 190, 18
+    PUSHBUTTON      "🔔  Звук уведомления", IDC_BTN_NOTIFY, 25, 104, 190, 18
+    
+    LTEXT           "Нажмите кнопку для проверки звука", IDC_STATUS_TEXT, 14, 130, 212, 10, SS_CENTER
+END

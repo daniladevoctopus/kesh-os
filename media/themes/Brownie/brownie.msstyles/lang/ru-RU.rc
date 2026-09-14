@@ -1,0 +1,37 @@
+LANGUAGE LANG_RUSSIAN, SUBLANG_DEFAULT
+
+STRINGTABLE
+{
+1000, "Ater"
+}
+
+STRINGTABLE
+{
+2000, "Brownie Ater"
+}
+
+STRINGTABLE
+{
+3000, "Обычный"
+3001, "Крупный шрифт"
+3002, "Огромный шрифт"
+}
+
+STRINGTABLE
+{
+4000, "Обычный"
+4001, "Крупный шрифт"
+4002, "Огромный шрифт"
+}
+
+STRINGTABLE
+{
+5000, "Brownie"
+5001, "Визуальный Стиль"
+5002, "SneakDeak Team"
+5003, "SneakDeak Team, основан на Luna Inspirat"
+5004, "Выпущен под GNU/GPL 2.0, 2026"
+5005, "https://reactos.org/"
+5006, "1.0"
+5007, "Визуальный стиль для KeshOS"
+}
