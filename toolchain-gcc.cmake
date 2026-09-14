@@ -1,6 +1,10 @@
 
 macro(require_program varname execname)
     find_program(${varname} ${execname})
+    if(NOT ${varname} AND NOT "${MINGW_TOOLCHAIN_PREFIX}" STREQUAL "")
+        string(REPLACE "${MINGW_TOOLCHAIN_PREFIX}" "" UNPREFIXED_EXEC "${execname}")
+        find_program(${varname} ${UNPREFIXED_EXEC})
+    endif()
     if(NOT ${varname})
         message(FATAL_ERROR "${execname} not found")
     endif()
