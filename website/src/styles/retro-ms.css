@@ -126,7 +126,6 @@ a:hover {
   font-weight: 600;
   text-decoration: none;
   border-radius: 16px;
-  transition: all 0.2s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
   line-height: 1;
 }
@@ -140,8 +139,6 @@ a:hover {
 .modern-btn-discord:hover {
   background: #4752c4;
   color: #ffffff;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(88, 101, 242, 0.4);
 }
 
 .modern-btn-github {
@@ -153,8 +150,6 @@ a:hover {
 .modern-btn-github:hover {
   background: #1b1f23;
   color: #ffffff;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(36, 41, 46, 0.4);
 }
 
 .ms-top-search-group {
@@ -244,7 +239,6 @@ a:hover {
   gap: 6px;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s;
 }
 
 .ms-nav-item:first-child {
@@ -608,11 +602,6 @@ a:hover {
   width: 52px;
   height: 64px;
   cursor: pointer;
-  transition: transform 0.2s;
-}
-
-.clippy-avatar:hover {
-  transform: scale(1.08) rotate(3deg);
 }
 
 /* Simulated Retro Browser Status Bar */
@@ -646,7 +635,6 @@ a:hover {
 .retro-status-progress-fill {
   background: #003399;
   height: 100%;
-  transition: width 0.3s ease;
 }
 
 .retro-status-right {
@@ -797,12 +785,6 @@ a:hover {
   padding: 10px;
   display: flex;
   flex-direction: column;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.gallery-slot-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(0, 51, 153, 0.15);
 }
 
 .gallery-slot-preview {
