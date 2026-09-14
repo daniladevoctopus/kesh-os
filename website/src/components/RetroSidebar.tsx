@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import type { PageTab } from './Navigation';
 
 interface RetroSidebarProps {
@@ -6,22 +6,6 @@ interface RetroSidebarProps {
 }
 
 export const RetroSidebar: React.FC<RetroSidebarProps> = ({ setActiveTab }) => {
-  const [discordMembers, setDiscordMembers] = useState<number>(15);
-
-  useEffect(() => {
-    // Fetch live Discord member count
-    fetch('https://discord.com/api/v9/invites/Gzd6ec6m?with_counts=true')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && typeof data.approximate_member_count === 'number') {
-          setDiscordMembers(data.approximate_member_count);
-        }
-      })
-      .catch(() => {
-        // Fallback to current verified count
-      });
-  }, []);
-
   return (
     <aside className="ms-sidebar">
       {/* Quick Navigation Box */}
@@ -86,15 +70,6 @@ export const RetroSidebar: React.FC<RetroSidebarProps> = ({ setActiveTab }) => {
           <span>Сообщество & Связь</span>
         </div>
         <div style={{ padding: '8px' }}>
-          <div style={{ marginBottom: '8px', padding: '6px 8px', background: '#f5f7fc', border: '1px solid #d0d7de', borderRadius: '3px', fontSize: '11px' }}>
-            <div style={{ fontWeight: 'bold', color: '#5865F2', marginBottom: '3px' }}>
-              SneakDeak Technologies
-            </div>
-            <div style={{ color: '#57606a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span>👥 {discordMembers} участников</span>
-            </div>
-          </div>
-
           <a
             href="https://discord.gg/Gzd6ec6m"
             target="_blank"
