@@ -7,20 +7,14 @@ interface RetroSidebarProps {
 
 export const RetroSidebar: React.FC<RetroSidebarProps> = ({ setActiveTab }) => {
   const [discordMembers, setDiscordMembers] = useState<number>(15);
-  const [discordOnline, setDiscordOnline] = useState<number>(7);
 
   useEffect(() => {
-    // Fetch live Discord member and online count
+    // Fetch live Discord member count
     fetch('https://discord.com/api/v9/invites/Gzd6ec6m?with_counts=true')
       .then((res) => res.json())
       .then((data) => {
-        if (data) {
-          if (typeof data.approximate_member_count === 'number') {
-            setDiscordMembers(data.approximate_member_count);
-          }
-          if (typeof data.approximate_presence_count === 'number') {
-            setDiscordOnline(data.approximate_presence_count);
-          }
+        if (data && typeof data.approximate_member_count === 'number') {
+          setDiscordMembers(data.approximate_member_count);
         }
       })
       .catch(() => {
@@ -96,14 +90,8 @@ export const RetroSidebar: React.FC<RetroSidebarProps> = ({ setActiveTab }) => {
             <div style={{ fontWeight: 'bold', color: '#5865F2', marginBottom: '3px' }}>
               SneakDeak Technologies
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: '#2da44e', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ display: 'inline-block', width: '7px', height: '7px', borderRadius: '50%', background: '#2da44e' }}></span>
-                {discordOnline} в сети
-              </span>
-              <span style={{ color: '#57606a' }}>
-                👥 {discordMembers} участников
-              </span>
+            <div style={{ color: '#57606a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>👥 {discordMembers} участников</span>
             </div>
           </div>
 
