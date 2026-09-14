@@ -388,11 +388,7 @@ ENDM
 .endm
 
 .macro .pushframe param
-    /*
-     * FIXME. .seh_pushframe doesn't accept code argument.
-     * Patch sent.
-     */
-    .seh_pushframe \param
+    .seh_pushframe
 .endm
 
 .macro .pushreg reg
