@@ -51,7 +51,7 @@ export const Header: React.FC<HeaderProps> = ({
             />
             <span className="cc-brand-title">
               KeshOS
-              <span className="cc-brand-edition">0.8.2 Brownie</span>
+              <span className="cc-brand-edition">0.8.2 Beta SP2</span>
             </span>
           </a>
 

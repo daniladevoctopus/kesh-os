@@ -12,13 +12,13 @@ export const SupportPage: React.FC<SupportPageProps> = ({ initialSearchQuery = '
       id: 'KB082001',
       title: 'Устранение ошибки «Unable to load second stage loader» при загрузке с USB',
       date: '14 сентября 2026 г.',
-      appliesTo: 'KeshOS 0.8.2 Brownie, FreeLoader',
+      appliesTo: 'KeshOS 0.8.2 Beta SP2, FreeLoader',
       symptoms:
         'При включении ПК загрузка через Syslinux выдает серию сообщений: «Failed to load: multi(0)disk(0)cdrom(0)\\rosload.exe», после чего появляется сообщение «Unable to load second stage loader. Press any key».',
       cause:
         'BIOS материнской платы эмулирует флешку как диск 0x80 без активного флага в таблице разделов MBR. Старая версия загрузчика ошибочно переключалась на пустой CD-ROM привод.',
       resolution:
-        'В версии KeshOS 0.8.2 эта проблема полностью решена: FreeLoader автоматически сканирует разделы rdisk(0..3)partition(1..4) и superfloppy (partition 0). Используйте актуальный универсальный образ bootcd.iso.',
+        'В выпуске KeshOS 0.8.2 Beta Service Pack 2 эта проблема полностью решена: FreeLoader автоматически сканирует разделы rdisk(0..3)partition(1..4) и superfloppy (partition 0). Используйте актуальный универсальный образ bootcd.iso.',
     },
     {
       id: 'KB082002',

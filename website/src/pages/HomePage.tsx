@@ -64,7 +64,7 @@ export const HomePage: React.FC<HomePageProps> = ({ setActiveTab }) => {
         <div className="cc-hero-meta">
           <span className="cc-chip cc-chip--accent">
             <span className="cc-chip-dot" />
-            Выпуск 0.8.2 Brownie
+            0.8.2 Beta • Service Pack 2 (Brownie)
           </span>
           <span className="cc-chip">
             Архитектура x86 (IA-32)
@@ -107,7 +107,7 @@ export const HomePage: React.FC<HomePageProps> = ({ setActiveTab }) => {
               className="cc-slab-img"
             />
             <div className="cc-slab-caption">
-              Рабочий стол KeshOS 0.8.2 Brownie
+              Рабочий стол KeshOS 0.8.2 Beta Service Pack 2 (Brownie)
             </div>
           </div>
         </div>
@@ -230,10 +230,10 @@ export const HomePage: React.FC<HomePageProps> = ({ setActiveTab }) => {
           </div>
 
           <div className="cc-card">
-            <span className="cc-chip cc-chip--accent">Актуальный выпуск</span>
-            <div className="cc-card-title">Релиз 0.8.2 Brownie</div>
+            <span className="cc-chip cc-chip--accent">Актуальная версия</span>
+            <div className="cc-card-title">Бета 0.8.2 • Service Pack 2</div>
             <div className="cc-card-desc">
-              Стабильный мастер OOBE, универсальный образ BootCD с Live RAM-диском, авторский визуальный стиль Brownie.
+              Стабильный мастер OOBE, исправление загрузчика для флешек и Ventoy, поддержка одноядерного режима (/NUMPROC=1), универсальный образ BootCD.
             </div>
           </div>
         </div>

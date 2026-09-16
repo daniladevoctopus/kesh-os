@@ -10,7 +10,7 @@ export const DownloadsPage: React.FC = () => {
   };
 
   const downloadInfo = {
-    title: 'KeshOS 0.8.2 Universal BootCD',
+    title: 'KeshOS 0.8.2 Beta (Service Pack 2) Universal BootCD',
     filename: 'bootcd.iso',
     size: '390 МБ',
     date: '14 сентября 2026 г.',
@@ -35,7 +35,7 @@ export const DownloadsPage: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
             <span className="cc-chip cc-chip--accent">
               <span className="cc-chip-dot" />
-              Стабильный гибридный образ
+              Бета-версия • Service Pack 2
             </span>
             <span className="cc-chip">{downloadInfo.architecture}</span>
             <span className="cc-chip">{downloadInfo.size}</span>
