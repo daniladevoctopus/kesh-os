@@ -1,11 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Header } from './components/Header';
-import { Navigation } from './components/Navigation';
 import type { PageTab } from './components/Navigation';
-import { RetroSidebar } from './components/RetroSidebar';
 import { Footer } from './components/Footer';
-import { RetroStatusBar } from './components/RetroStatusBar';
-import { ClippyAssistant } from './components/ClippyAssistant';
 
 import { HomePage } from './pages/HomePage';
 import { AboutPage } from './pages/AboutPage';
@@ -13,12 +9,28 @@ import { DownloadsPage } from './pages/DownloadsPage';
 import { SupportPage } from './pages/SupportPage';
 import { LegalPage } from './pages/LegalPage';
 
-import './styles/retro-ms.css';
+import './styles/cupcake.css';
 
 export function App() {
   const [activeTab, setActiveTabState] = useState<PageTab>('home');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('cc_theme');
+    if (saved === 'light' || saved === 'dark') {
+      return saved;
+    }
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
+
+  // Sync theme with HTML attribute
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('cc_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+  };
 
   // Sync with URL Hash on load
   useEffect(() => {
@@ -40,15 +52,9 @@ export function App() {
 
   const setActiveTab = (tab: PageTab) => {
     if (tab === activeTab) return;
-    setIsLoading(true);
     window.location.hash = tab;
     setActiveTabState(tab);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-
-    // Brief simulated loading state for authentic retro feel
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 200);
   };
 
   const handleSearch = (query: string) => {
@@ -74,31 +80,28 @@ export function App() {
   };
 
   return (
-    <div className="retro-app-wrapper">
-      {/* Top Microsoft Utility & Search Bar */}
+    <div className="cc-app">
+      {/* Background ambient lighting */}
+      <div className="cc-ambient-glow" aria-hidden="true" />
+
+      {/* Sticky Header with 2 rows */}
       <Header
         onSearch={handleSearch}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        theme={theme}
+        toggleTheme={toggleTheme}
       />
 
-      {/* Blue Ribbon Main Navigation */}
-      <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
+      {/* Main Content Area */}
+      <main className="cc-container">
+        {renderActivePage()}
+      </main>
 
-      {/* Main Body Area */}
-      <div className="ms-body-layout">
-        <RetroSidebar setActiveTab={setActiveTab} />
-        <main className="ms-main-content">{renderActivePage()}</main>
-      </div>
-
-      {/* Legal & Navigation Footer */}
+      {/* Footer */}
       <Footer setActiveTab={setActiveTab} />
-
-      {/* Simulated IE Browser Status Bar */}
-      <RetroStatusBar isLoading={isLoading} />
-
-      {/* Interactive Clippy Assistant */}
-      <ClippyAssistant setActiveTab={setActiveTab} />
     </div>
   );
 }

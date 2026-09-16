@@ -5,168 +5,172 @@ interface SupportPageProps {
 }
 
 export const SupportPage: React.FC<SupportPageProps> = ({ initialSearchQuery = '' }) => {
-  const [activeKb, setActiveKb] = useState<string | null>('KB082001');
   const [filterText, setFilterText] = useState(initialSearchQuery);
 
   const kbArticles = [
     {
       id: 'KB082001',
-      title: 'Устранение ошибки "Unable to load second stage loader" при загрузке с USB-флешки',
+      title: 'Устранение ошибки «Unable to load second stage loader» при загрузке с USB',
       date: '14 сентября 2026 г.',
-      appliesTo: 'KeshOS 0.8.2 Beta, FreeLoader i386',
+      appliesTo: 'KeshOS 0.8.2 Brownie, FreeLoader',
       symptoms:
-        'При включении ПК загрузка через Syslinux выдает серию сообщений: "Failed to load: multi(0)disk(0)cdrom(0)\\rosload.exe", после чего появляется сообщение "Unable to load second stage loader. Press any key".',
+        'При включении ПК загрузка через Syslinux выдает серию сообщений: «Failed to load: multi(0)disk(0)cdrom(0)\\rosload.exe», после чего появляется сообщение «Unable to load second stage loader. Press any key».',
       cause:
-        'BIOS материнской платы эмулирует флешку как диск 0x80 без активного флага в таблице разделов MBR. Старая версия загрузчика ошибочно переключалась на внутренний пустой CD-ROM привод.',
+        'BIOS материнской платы эмулирует флешку как диск 0x80 без активного флага в таблице разделов MBR. Старая версия загрузчика ошибочно переключалась на пустой CD-ROM привод.',
       resolution:
-        'В версии KeshOS 0.8.2 эта проблема полностью решена. Загрузчик автоматически сканирует разделы rdisk(0..3)partition(1..4) и superfloppy (partition 0). Используйте свежий универсальный образ bootcd.iso от сентября 2026 года.',
+        'В версии KeshOS 0.8.2 эта проблема полностью решена: FreeLoader автоматически сканирует разделы rdisk(0..3)partition(1..4) и superfloppy (partition 0). Используйте актуальный универсальный образ bootcd.iso.',
     },
     {
       id: 'KB082002',
-      title: 'Предотвращение сбоя ядра (HAL1_INITIALIZATION_FAILED) на современных процессорах',
+      title: 'Предотвращение сбоя ядра HAL1_INITIALIZATION_FAILED на многоядерных CPU',
       date: '11 сентября 2026 г.',
-      appliesTo: 'Многоядерные процессоры Intel Core i3-i9, AMD Ryzen',
+      appliesTo: 'Процессоры Intel Core, AMD Ryzen, SMP ACPI',
       symptoms:
-        'При старте ядра системы на современных многоядерных ПК с поддержкой APIC происходит зависание или синий экран.',
+        'При старте ядра системы на современных многоядерных ПК с поддержкой APIC происходит зависание ядра.',
       cause:
-        'Многоядерная подсистема SMP ACPI в ранних сборках требует строгой синхронизации тактовой частоты ядер.',
+        'Многоядерная подсистема SMP ACPI в ранних версиях требует строгой синхронизации тактовой частоты ядер.',
       resolution:
-        'В конфигурационный файл bootcd.ini добавлен параметр /NUMPROC=1. Он предписывает ядру безопасно использовать одно вычислительное ядро для обеспечения 100% стабильности на любых современных CPU.',
+        'В конфигурационный файл bootcd.ini добавлен проверенный параметр /NUMPROC=1. Он предписывает ядру безопасно использовать одно вычислительное ядро для обеспечения 100% стабильности на любых современных CPU.',
     },
     {
       id: 'KB082003',
       title: 'Настройка разрешения дисплея и поддержка драйверов VESA / VBEMP',
       date: '08 сентября 2026 г.',
-      appliesTo: 'KeshOS Workstation, Видеоподсистема Win32k',
+      appliesTo: 'Видеоподсистема Win32k, VBE 2.0+',
       symptoms:
-        'Экран по умолчанию запускается в базовом разрешении 800x600.',
+        'Экран по умолчанию запускается в базовом разрешении 800×600.',
       cause:
-        'Отсутствие специализированного видеодрайвера производителя видеокарты.',
+        'Использование универсального графического режима до установки фирменного драйвера видеокарты.',
       resolution:
-        'Откройте Панель управления -> Экран -> Параметры. Выберите требуемое разрешение (1024x768, 1280x1024 или выше). Универсальный драйвер VBE / VESA поддерживает большинство современных мониторов и видеокарт.',
+        'Откройте Панель управления → Экран → Параметры. Выберите требуемое разрешение (1024×768, 1280×1024 или выше). Универсальный видеодрайвер поддерживает большинство современных мониторов.',
     },
     {
       id: 'KB082004',
       title: 'Работа с сетевыми подключениями и веб-браузером',
       date: '05 сентября 2026 г.',
-      appliesTo: 'Сетевой стек TCP/IP, Ethernet контроллеры',
+      appliesTo: 'Сетевой стек TCP/IP, Ethernet адаптеры',
       symptoms:
-        'Как настроить интернет-соединение и просматривать сайты в KeshOS?',
+        'Настройка интернет-соединения и выход в сеть из KeshOS.',
       cause:
-        'Информационная справка по сетевым компонентам.',
+        'Информационная справка по сетевой конфигурации.',
       resolution:
         'KeshOS автоматически получает сетевой IP-адрес по протоколу DHCP при наличии совместимого сетевого адаптера (Realtek, Intel PRO/1000, AMD PCnet). В системе предустановлены утилиты проверки сети ping и веб-браузер.',
     },
   ];
 
-  const filteredArticles = kbArticles.filter(
-    (a) =>
-      a.title.toLowerCase().includes(filterText.toLowerCase()) ||
-      a.id.toLowerCase().includes(filterText.toLowerCase()) ||
-      a.symptoms.toLowerCase().includes(filterText.toLowerCase())
-  );
+  const filtered = kbArticles.filter((art) => {
+    const q = filterText.toLowerCase();
+    return (
+      art.id.toLowerCase().includes(q) ||
+      art.title.toLowerCase().includes(q) ||
+      art.symptoms.toLowerCase().includes(q) ||
+      art.resolution.toLowerCase().includes(q)
+    );
+  });
 
   return (
-    <div className="ms-page-support">
-      <div className="ms-section-header">
-        <div className="ms-section-title">
-          <span>База знаний (KeshOS Knowledge Base)</span>
+    <div className="cc-page">
+      <section className="cc-section" style={{ paddingTop: 32 }}>
+        <div className="cc-section-header">
+          <span className="cc-section-tag">Справка</span>
+          <h2>База знаний и техническая поддержка</h2>
+          <p className="cc-lead" style={{ marginTop: 8 }}>
+            Руководства по решению типичных вопросов установки, совместимости оборудования и конфигурации ядра.
+          </p>
         </div>
-        <span style={{ fontSize: '10px', color: '#666' }}>Статьи технической поддержки</span>
-      </div>
 
-      {/* Filter box */}
-      <div style={{ marginBottom: '14px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-        <span>Фильтр по ключевым словам или номеру статьи:</span>
-        <input
-          type="text"
-          className="ms-search-input"
-          placeholder="Например: USB, BSOD, KB082001..."
-          value={filterText}
-          onChange={(e) => setFilterText(e.target.value)}
-          style={{ width: '220px' }}
-        />
-        {filterText && (
-          <button className="win-btn" onClick={() => setFilterText('')}>
-            Очистить
-          </button>
-        )}
-      </div>
+        {/* Search bar */}
+        <div style={{ marginBottom: 28, maxWidth: 460 }}>
+          <input
+            type="text"
+            className="cc-search-input"
+            style={{ width: '100%', height: 42 }}
+            placeholder="Фильтр по статьям: USB, CPU, экран, KB..."
+            value={filterText}
+            onChange={(e) => setFilterText(e.target.value)}
+          />
+        </div>
 
-      {/* Articles List */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-        {filteredArticles.map((article) => {
-          const isExpanded = activeKb === article.id;
-          return (
-            <div key={article.id} className="ms-kb-box">
-              <div
-                className="ms-kb-header"
-                style={{ cursor: 'pointer' }}
-                onClick={() => setActiveKb(isExpanded ? null : article.id)}
+        {/* Accordions: <details> with <dl> per Cupcake spec § 6 */}
+        <div className="cc-accordion-list">
+          {filtered.length > 0 ? (
+            filtered.map((art) => (
+              <details key={art.id} className="cc-accordion" open={filtered.length === 1}>
+                <summary className="cc-accordion-summary">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    <code className="cc-mono" style={{ color: 'var(--cc-accent-deep)', fontWeight: 600 }}>
+                      {art.id}
+                    </code>
+                    <span>{art.title}</span>
+                  </div>
+                  <span className="cc-faint" style={{ flexShrink: 0 }}>
+                    {art.date}
+                  </span>
+                </summary>
+
+                <div className="cc-accordion-content">
+                  <dl className="cc-accordion-dl">
+                    <dt className="cc-accordion-dt">Применимо к:</dt>
+                    <dd className="cc-accordion-dd">{art.appliesTo}</dd>
+
+                    <dt className="cc-accordion-dt">Симптомы:</dt>
+                    <dd className="cc-accordion-dd">{art.symptoms}</dd>
+
+                    <dt className="cc-accordion-dt">Причина:</dt>
+                    <dd className="cc-accordion-dd">{art.cause}</dd>
+
+                    <dt className="cc-accordion-dt">Решение:</dt>
+                    <dd className="cc-accordion-dd" style={{ fontWeight: 500 }}>
+                      {art.resolution}
+                    </dd>
+                  </dl>
+                </div>
+              </details>
+            ))
+          ) : (
+            <div className="cc-panel" style={{ textAlign: 'left' }}>
+              <h3 style={{ marginBottom: 8 }}>По этому запросу статей нет</h3>
+              <p className="cc-muted" style={{ marginBottom: 16 }}>
+                Если вашей проблемы нет в базе знаний, задайте вопрос разработчикам в нашем Discord-сообществе.
+              </p>
+              <a
+                href="https://discord.gg/Gzd6ec6m"
+                target="_blank"
+                rel="noreferrer"
+                className="cc-btn cc-btn--discord cc-btn--small"
               >
-                <div>
-                  <span className="ms-kb-id">{article.id}</span>: <strong>{article.title}</strong>
-                </div>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                  <span className="ms-kb-date">{article.date}</span>
-                  <button className="win-btn" style={{ padding: '1px 6px', fontSize: '10px' }}>
-                    {isExpanded ? '▲ Свернуть' : '▼ Читать'}
-                  </button>
-                </div>
-              </div>
-
-              {isExpanded && (
-                <div style={{ fontSize: '11px', lineHeight: '1.6', marginTop: '10px' }}>
-                  <p style={{ color: '#555', marginBottom: '8px' }}>
-                    <strong>Применимо к:</strong> {article.appliesTo}
-                  </p>
-
-                  <div style={{ marginBottom: '8px' }}>
-                    <strong style={{ color: '#8b0000' }}>ПРИЗНАКИ (SYMPTOMS):</strong>
-                    <p style={{ marginTop: '2px', background: '#fdfbf2', padding: '6px', borderLeft: '3px solid #8b0000' }}>
-                      {article.symptoms}
-                    </p>
-                  </div>
-
-                  <div style={{ marginBottom: '8px' }}>
-                    <strong style={{ color: '#003399' }}>ПРИЧИНА (CAUSE):</strong>
-                    <p style={{ marginTop: '2px', background: '#f5f8fc', padding: '6px', borderLeft: '3px solid #003399' }}>
-                      {article.cause}
-                    </p>
-                  </div>
-
-                  <div>
-                    <strong style={{ color: '#006600' }}>РЕШЕНИЕ (RESOLUTION):</strong>
-                    <p style={{ marginTop: '2px', background: '#f4fbf4', padding: '6px', borderLeft: '3px solid #006600' }}>
-                      {article.resolution}
-                    </p>
-                  </div>
-                </div>
-              )}
+                Задать вопрос в Discord
+              </a>
             </div>
-          );
-        })}
-      </div>
-
-      {/* Community Support Box */}
-      <div className="ms-card">
-        <div className="ms-card-header">
-          <span>Служба сообщества и обратная связь</span>
+          )}
         </div>
-        <p style={{ marginBottom: '10px', fontSize: '11px', lineHeight: '1.5', color: '#333' }}>
-          Сообщество разработчиков KeshOS оказывает оперативную техническую помощь. 
-          Вы можете задать вопрос в нашем официальном Discord-сервере или передать лог-файл <code>debugkesh.log</code> разработчикам для анализа.
-        </p>
-        <a
-          href="https://discord.gg/Gzd6ec6m"
-          target="_blank"
-          rel="noreferrer"
-          className="ms-hero-btn"
-          style={{ fontSize: '11px', padding: '5px 14px' }}
-        >
-          Перейти в Discord сообщество KeshOS
-        </a>
-      </div>
+
+        {/* Direct Help Callout */}
+        <div className="cc-panel" style={{ marginTop: 48 }}>
+          <h3 style={{ marginBottom: 8 }}>Остались вопросы?</h3>
+          <p className="cc-muted" style={{ marginBottom: 20, maxWidth: '64ch' }}>
+            Разработчики и участники сообщества KeshOS общаются на сервере SneakDeak Technologies. Вы можете прислать лог-файл <code>debugkesh.log</code> или задать вопрос по установке.
+          </p>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <a
+              href="https://discord.gg/Gzd6ec6m"
+              target="_blank"
+              rel="noreferrer"
+              className="cc-btn cc-btn--discord"
+            >
+              Перейти в Discord
+            </a>
+            <a
+              href="https://github.com/daniladevoctopus/kesh-os/issues"
+              target="_blank"
+              rel="noreferrer"
+              className="cc-btn"
+            >
+              Открыть Issue на GitHub
+            </a>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };

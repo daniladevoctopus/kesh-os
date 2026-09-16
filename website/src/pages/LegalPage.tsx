@@ -2,71 +2,68 @@ import React from 'react';
 
 export const LegalPage: React.FC = () => {
   return (
-    <div className="ms-page-legal">
-      <div className="ms-section-header">
-        <div className="ms-section-title">
-          <span>Юридические положения, Условия и Конфиденциальность</span>
-        </div>
-        <span style={{ fontSize: '10px', color: '#666' }}>Редакция от сентября 2026 г.</span>
-      </div>
-
-      {/* Privacy Statement Box */}
-      <div className="ms-card" style={{ marginBottom: '16px' }}>
-        <div className="ms-card-header">
-          <span>Положение о конфиденциальности KeshOS (Privacy Statement)</span>
-        </div>
-        <div style={{ fontSize: '11px', lineHeight: '1.6', color: '#333' }}>
-          <p style={{ marginBottom: '8px' }}>
-            Проект KeshOS придерживается строгих стандартов цифровой конфиденциальности. 
-            Политика работы с пользовательскими данными основана на следующих принципах:
+    <div className="cc-page">
+      <section className="cc-section" style={{ paddingTop: 32 }}>
+        <div className="cc-section-header">
+          <span className="cc-section-tag">Правовая информация</span>
+          <h2>Лицензионные условия и конфиденциальность</h2>
+          <p className="cc-lead" style={{ marginTop: 8 }}>
+            Политика работы с пользовательскими данными, условия свободной лицензии и уведомления о товарных знаках.
           </p>
-          <ol style={{ paddingLeft: '20px', marginBottom: '8px' }}>
-            <li>
-              <strong>Локальность вычислений:</strong> Операционная система не отправляет фоновые телеметрические пакеты на внешние серверы и не требует обязательного подключения к глобальной сети.
-            </li>
-            <li>
-              <strong>Отсутствие обязательных онлайн-профилей:</strong> Все учётные записи создаются и функционируют исключительно локально на вашем компьютере.
-            </li>
-            <li>
-              <strong>Диагностические журналы ядра:</strong> Файлы трассировки (например, <code>debugkesh.log</code>) сохраняются только локально и используются исключительно для отладки аппаратной совместимости.
-            </li>
-          </ol>
         </div>
-      </div>
 
-      {/* Terms of Use Box */}
-      <div className="ms-card" style={{ marginBottom: '16px' }}>
-        <div className="ms-card-header">
-          <span>Условия использования и Лицензия (Terms of Use & License)</span>
-        </div>
-        <div style={{ fontSize: '11px', lineHeight: '1.6', color: '#333' }}>
-          <p style={{ marginBottom: '8px' }}>
-            KeshOS распространяется на условиях лицензии <strong>GNU General Public License (GPL)</strong> и лицензий сопутствующих свободных компонентов открытого программного обеспечения.
-          </p>
-          <ul style={{ paddingLeft: '20px', marginBottom: '8px' }}>
-            <li>
-              <strong>Свобода использования:</strong> Допускается использование в любых личных, образовательных и исследовательских целях.
-            </li>
-            <li>
-              <strong>Открытость исходного кода:</strong> Исходный код модификаций открыт и доступен для аудита и сборки.
-            </li>
-            <li>
-              <strong>Отказ от гарантий (AS IS):</strong> Программное обеспечение предоставляется по принципу «КАК ЕСТЬ» (AS IS), без каких-либо явных или подразумеваемых гарантий.
-            </li>
-          </ul>
-        </div>
-      </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {/* Privacy Statement */}
+          <div className="cc-card">
+            <div className="cc-card-title">Положение о конфиденциальности</div>
+            <div className="cc-card-desc">
+              <p style={{ marginBottom: 12 }}>
+                KeshOS придерживается строгого принципа локальности данных:
+              </p>
+              <ul style={{ paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <li>
+                  <strong>Локальность вычислений:</strong> Операционная система не передаёт скрытые телеметрические пакеты на внешние серверы и не требует обязательного подключения к сети.
+                </li>
+                <li>
+                  <strong>Локальные профили:</strong> Все учётные записи создаются и хранятся исключительно на физическом устройстве пользователя.
+                </li>
+                <li>
+                  <strong>Диагностические журналы:</strong> Логи ядра (например, <code>debugkesh.log</code>) формируются локально для отладки драйверов и отправляются разработчикам только по личному решению пользователя.
+                </li>
+              </ul>
+            </div>
+          </div>
 
-      {/* Trademarks Disclaimer */}
-      <div className="ms-card">
-        <div className="ms-card-header">
-          <span>Уведомление о товарных знаках</span>
+          {/* Terms of Use */}
+          <div className="cc-card">
+            <div className="cc-card-title">Условия использования и лицензия</div>
+            <div className="cc-card-desc">
+              <p style={{ marginBottom: 12 }}>
+                KeshOS распространяется на условиях лицензии <strong>GNU General Public License (GPL)</strong> и лицензий сопутствующих открытых компонентов:
+              </p>
+              <ul style={{ paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <li>
+                  <strong>Свободное применение:</strong> Допускается использование в личных, образовательных и исследовательских целях.
+                </li>
+                <li>
+                  <strong>Открытый исходный код:</strong> Модификации и код проекта открыты для аудита и сборки в публичном репозитории.
+                </li>
+                <li>
+                  <strong>Предоставление «как есть»:</strong> Программное обеспечение предоставляется на условиях «AS IS», без гарантий пригодности для коммерческой эксплуатации в критических системах.
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Trademarks */}
+          <div className="cc-card">
+            <div className="cc-card-title">Уведомление о товарных знаках</div>
+            <div className="cc-card-desc">
+              Microsoft, MS-DOS, Windows, Windows NT, Windows 2000, Windows XP являются товарными знаками Microsoft Corporation. Проект KeshOS является независимой разработкой на базе ReactOS и ядра NT, не аффилирован с корпорацией Microsoft и использует наименования исключительно в целях технического описания совместимости.
+            </div>
+          </div>
         </div>
-        <p style={{ fontSize: '10px', lineHeight: '1.5', color: '#555' }}>
-          Microsoft, MS-DOS, Windows, Windows NT, Windows 2000, Windows XP являются товарными знаками Microsoft Corporation в США и других юрисдикциях. 
-          Проект KeshOS является независимой открытой разработкой, не аффилирован с корпорацией Microsoft и использует торговые наименования исключительно в целях технического описания интерфейсов совместимости.
-        </p>
-      </div>
+      </section>
     </div>
   );
 };

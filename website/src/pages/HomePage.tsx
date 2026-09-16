@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { PageTab } from '../components/Navigation';
 import screenDesktop from '../assets/stol.png';
 import screenOobe from '../assets/oobe.png';
@@ -13,336 +13,252 @@ interface HomePageProps {
 export const HomePage: React.FC<HomePageProps> = ({ setActiveTab }) => {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
-  // Gallery slots strictly for the current OS (KeshOS Brownie 0.8.2)
-  const brownieGallerySlots = [
+  // Close modal on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedPhoto(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const galleryItems = [
     {
-      id: 'slot_desktop',
-      title: '1. Рабочий стол KeshOS Brownie',
-      desc: 'Главный рабочий стол: панель задач, фирменные шоколадные обои и ярлыки рабочего пространства.',
-      targetFile: 'screen_desktop.png',
-      previewSrc: screenDesktop,
-      hasImage: true,
+      id: 'desktop',
+      title: 'Рабочий стол KeshOS Brownie',
+      desc: 'Панель задач, авторские шоколадные обои и ярлыки рабочего пространства.',
+      src: screenDesktop,
     },
     {
-      id: 'slot_oobe',
-      title: '2. Мастер настройки OOBE',
-      desc: 'Пошаговый конфигуратор первого запуска: настройка сети, учетной записи и параметров темы.',
-      targetFile: 'screen_oobe.png',
-      previewSrc: screenOobe,
-      hasImage: true,
+      id: 'oobe',
+      title: 'Мастер настройки OOBE',
+      desc: 'Пошаговый конфигуратор первого запуска: сеть, учётная запись и темы.',
+      src: screenOobe,
     },
     {
-      id: 'slot_startmenu',
-      title: '3. Меню «Пуск» и программы',
-      desc: 'Классическое двухуровневое меню "Пуск", быстрый доступ к утилитам и панели управления.',
-      targetFile: 'screen_startmenu.png',
-      previewSrc: screenStartmenu,
-      hasImage: true,
+      id: 'startmenu',
+      title: 'Меню «Пуск» и утилиты',
+      desc: 'Двухуровневое классическое меню и быстрый доступ к программам.',
+      src: screenStartmenu,
     },
     {
-      id: 'slot_explorer',
-      title: '4. Проводник «Мой компьютер»',
-      desc: 'Управление локальными дисками, дискетами и съемными USB-накопителями в окне проводника.',
-      targetFile: 'screen_explorer.png',
-      previewSrc: screenExplorer,
-      hasImage: true,
+      id: 'explorer',
+      title: 'Проводник файлов',
+      desc: 'Управление локальными дисками, дискетами и USB-накопителями.',
+      src: screenExplorer,
     },
     {
-      id: 'slot_real_pc',
-      title: '5. Запуск на реальном ноутбуке',
-      desc: 'Фотография экрана физического компьютера с запущенной операционной системой KeshOS.',
-      targetFile: 'screen_real_pc.png',
-      previewSrc: '/images/screen_real_pc.png',
-      hasImage: false,
-    },
-    {
-      id: 'slot_bootloader',
-      title: '6. Меню загрузчика FreeLoader',
-      desc: 'Экран выбора вариантов запуска при включении ПК (RAM Boot / Setup / Screen Debug).',
-      targetFile: 'screen_bootloader.png',
-      previewSrc: screenBootloader,
-      hasImage: true,
+      id: 'bootloader',
+      title: 'Меню загрузчика FreeLoader',
+      desc: 'Выбор вариантов запуска (RAM Boot, чистая установка, отладка).',
+      src: screenBootloader,
     },
   ];
 
   return (
-    <div className="ms-page-home">
-      {/* Hero Banner */}
-      <div className="ms-hero-card">
-        <div style={{ flex: 1 }}>
-          <div className="ms-hero-tagline">ПРОЕКТ SNEAKDEAK TECHNOLOGIES • КОДОВОЕ НАЗВАНИЕ: "BROWNIE"</div>
-          <h1>KeshOS® Workstation 0.8.2</h1>
-          <p className="ms-hero-desc">
-            Быстрая, компактная операционная система с душой классики и поддержкой Win32-приложений. 
-            Кодовое название текущего выпуска — <strong>«Brownie»</strong>. 
-            Единый универсальный гибридный образ BootCD объединяет стабильный запуск прямо в оперативную память (Live RAM Boot) и полную чистую установку на жесткий диск.
-          </p>
-          <div className="ms-hero-action">
-            <button
-              className="ms-hero-btn"
-              onClick={() => setActiveTab('downloads')}
-              type="button"
-            >
-              Скачать KeshOS BootCD (389 MB)
-            </button>
-            <a
-              href="#history"
-              className="win-btn"
-              style={{ padding: '6px 14px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
-            >
-              Наша история &gt;&gt;
-            </a>
-          </div>
+    <div className="cc-page">
+      {/* Hero Section */}
+      <section className="cc-hero">
+        <div className="cc-hero-meta">
+          <span className="cc-chip cc-chip--accent">
+            <span className="cc-chip-dot" />
+            Выпуск 0.8.2 Brownie
+          </span>
+          <span className="cc-chip">
+            Архитектура x86 (IA-32)
+          </span>
         </div>
 
-        <div style={{ textAlign: 'center', flexShrink: 0 }}>
-          <img
-            src={screenDesktop}
-            alt="KeshOS Desktop"
-            style={{
-              width: '240px',
-              border: '2px solid #ffffff',
-              boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
-              borderRadius: '2px',
-            }}
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src = '/images/keshos_logo.png';
-            }}
-          />
-          <div style={{ fontSize: '9px', color: '#ffde7a', marginTop: '4px' }}>
-            KeshOS (Кодовое название: Brownie)
-          </div>
-        </div>
-      </div>
-
-      {/* 1. Project History Section (BEFORE the photos) */}
-      <div id="history" className="ms-section-header">
-        <div className="ms-section-title">
-          <span>Наша история: Как рождался KeshOS и кодовое имя «Brownie»</span>
-        </div>
-        <span style={{ fontSize: '10px', color: '#666' }}>Искренний рассказ от лица создателей</span>
-      </div>
-
-      {/* Warm human letter / memo */}
-      <div className="ms-story-letter">
-        <p>
-          <strong>Привет всем, кто заглянул на наш сайт!</strong>
-        </p>
-        <p>
-          Всё началось с простого юношеского желания: сделать собственную операционную систему, которой будет приятно пользоваться нам самим. 
-          Без сотен назойливых фоновых процессов, без гигабайтов скрытой телеметрии, без навязанных онлайн-аккаунтов и тяжелых, бездушных интерфейсов. 
-          Мы хотели вернуть то самое незабываемое ощущение рубежа 2000-х, когда компьютер слушался тебя с полуслова и был твоим личным верным инструментом, а не витриной для рекламы.
-        </p>
-        <blockquote>
-          «Путь от первой строчки кода до загрузки рабочего стола на реальном компьютере оказался в сотни раз сложнее, чем мы представляли. Но именно трудности закалили наш проект.»
-        </blockquote>
-        <p>
-          Сначала мы с горящими глазами пытались написать всё с чистого листа на <strong>Rust</strong>. Казалось: современный язык, безопасная память, никаких утечек! 
-          Мы ночами читали спецификации OSDev, ковыряли ассемблерные загрузчики, настраивали страничную адресацию и обработку прерываний. 
-          Но реальность быстро остудила пыл: написать ядро — это лишь 5% всей задачи. Чтобы в системе можно было слушать музыку, смотреть файлы и играть в игры, нужны тысячи совместимых драйверов для видеокарт, звуковых чипов, контроллеров USB и накопителей. В одиночку написать такую экосистему с нуля заняло бы десятилетия.
-        </p>
-        <p>
-          Затем мы попытались взять за основу <strong>SayoriOS</strong>. Надеялись, что чужой готовый фундамент поможет быстрее увидеть работающий интерфейс. 
-          Но на практике началась бесконечная война с чужими багами, архитектурными тупиками и странными падениями ядра, которые никто не мог объяснить. 
-          Были моменты, когда руки опускались: система упорно падала в тройную перезагрузку или выдавала синий экран смерти прямо на старте.
-        </p>
-        <p>
-          Переломным и самым счастливым моментом стал тот вечер, когда сетевой стек впервые ожил, и в окне терминала пролетели четыре заветные строчки: 
-          <code>Reply from 8.8.8.8: bytes=32 time=18ms TTL=118</code>. Мы поняли: система дышит, она умеет общаться с внешним миром!
-        </p>
-        <p>
-          Тогда и пришло зрелое инженерное решение: опереться на великую, проверенную тридцатью годами архитектуру <strong>Windows NT (на базе технологий ReactOS)</strong>. 
-          Это открыло прямую совместимость с классическими программами Win32, богатую базу драйверов и любимый проводник Explorer. 
-          А кодовое имя <strong>«Brownie»</strong> мы выбрали потому, что хотели подарить людям тепло и уют: благородные кофейно-шоколадные оттенки, как чашка горячего кофе и свежий брауни прохладной ночью, напоминают о том, что технологии должны радовать человека.
-        </p>
-      </div>
-
-      {/* Timeline milestones */}
-      <div className="ms-timeline">
-        {/* Milestone 1 */}
-        <div className="ms-timeline-item">
-          <div className="ms-timeline-header">
-            <span className="ms-timeline-title">1. Мечта о микроядре на Rust</span>
-            <span className="ms-timeline-badge">ЭТАП 1 • 2024–2025</span>
-          </div>
-          <p className="ms-timeline-desc">
-            Изучение регистров x86, переключения режимов реального и защищенного режима, попытки написать диспетчер памяти с нуля. Огромный багаж низкоуровневых знаний и понимание масштаба задачи.
+        <div>
+          <h1>KeshOS Workstation</h1>
+          <p className="cc-hero-lead" style={{ marginTop: 12 }}>
+            Быстрая и компактная операционная система с душой классики и нативной поддержкой Win32. Единый гибридный образ BootCD объединяет мгновенный запуск прямо в оперативную память и установку на диск.
           </p>
         </div>
 
-        {/* Milestone 2 */}
-        <div className="ms-timeline-item">
-          <div className="ms-timeline-header">
-            <span className="ms-timeline-title">2. Эксперименты на базе SayoriOS</span>
-            <span className="ms-timeline-badge">ЭТАП 2 • 2025</span>
-          </div>
-          <p className="ms-timeline-desc">
-            Попытка собрать систему на готовом открытом коде SayoriOS. Тестирование графических режимов, выявление архитектурных ограничений и осознание необходимости более фундаментального фундамента.
-          </p>
-        </div>
-
-        {/* Milestone 3 */}
-        <div className="ms-timeline-item">
-          <div className="ms-timeline-header">
-            <span className="ms-timeline-title">3. Череда проблем, отладка и выход в сеть</span>
-            <span className="ms-timeline-badge">ЭТАП 3 • 2025–2026</span>
-          </div>
-          <p className="ms-timeline-desc">
-            Сотни перезагрузок, борьба с падениями стека ядра Double Fault (0x7F) и долгожданный первый успешный сетевой пинг, подтвердивший жизнеспособность сетевого стека.
-          </p>
-        </div>
-
-        {/* Milestone 4 */}
-        <div className="ms-timeline-item">
-          <div className="ms-timeline-header">
-            <span className="ms-timeline-title">4. Переход на зрелую NT-совместимую архитектуру</span>
-            <span className="ms-timeline-badge">ЭТАП 4 • 2026</span>
-          </div>
-          <p className="ms-timeline-desc">
-            Переход на стандарты ядра Windows NT: нативная поддержка приложений Win32, стабильные видеорежимы VESA, классический проводник Explorer и поддержка реального оборудования.
-          </p>
-        </div>
-
-        {/* Milestone 5 */}
-        <div className="ms-timeline-item">
-          <div className="ms-timeline-header">
-            <span className="ms-timeline-title">5. KeshOS 0.8.2 Beta: Релиз с кодовым именем "Brownie"</span>
-            <span className="ms-timeline-badge" style={{ background: '#ffcc00', color: '#000' }}>АКТУАЛЬНЫЙ РЕЛИЗ</span>
-          </div>
-          <p className="ms-timeline-desc">
-            Рождение версии 0.8.2: авторский шоколадный стиль Brownie, стабильный мастер OOBE, исправление загрузчика FreeLoader под USB на реальных ноутбуках, защита от краха APIC на многоядерных процессорах и универсальный образ BootCD.
-          </p>
-        </div>
-      </div>
-
-      {/* 2. Gallery Section (AFTER the story) */}
-      <div className="ms-section-header" style={{ marginTop: '28px' }}>
-        <div className="ms-section-title">
-          <span>Галерея снимков KeshOS 0.8.2 «Brownie»</span>
-        </div>
-        <span style={{ fontSize: '10px', color: '#666' }}>Интерфейс актуальной операционной системы</span>
-      </div>
-
-      <p style={{ marginBottom: '14px', fontSize: '11px', color: '#333', lineHeight: '1.5' }}>
-        Познакомьтесь с актуальным визуальным оформлением нашей системы: от мастера первой настройки OOBE до рабочего стола, проводника и меню мультизагрузки. Нажмите на любой снимок для детального просмотра.
-      </p>
-
-      <div className="gallery-slot-grid">
-        {brownieGallerySlots.map((slot) => (
-          <div key={slot.id} className="gallery-slot-card">
-            <div
-              className="gallery-slot-preview"
-              onClick={() => slot.hasImage && setSelectedPhoto(slot.previewSrc)}
-              style={{ cursor: slot.hasImage ? 'pointer' : 'default' }}
-            >
-              {slot.hasImage ? (
-                <img
-                  src={slot.previewSrc}
-                  alt={slot.title}
-                  onError={(e) => {
-                    (e.currentTarget as HTMLElement).style.display = 'none';
-                  }}
-                />
-              ) : (
-                <>
-                  <div className="gallery-slot-placeholder-icon">📷</div>
-                  <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#003399' }}>
-                    Слот для фото ОС
-                  </div>
-                  <div className="gallery-slot-tag">
-                    {slot.targetFile}
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div style={{ fontWeight: 'bold', fontSize: '11px', color: '#003399', marginBottom: '4px' }}>
-              {slot.title}
-            </div>
-            <div style={{ fontSize: '10px', color: '#555', lineHeight: '1.4', flex: 1 }}>
-              {slot.desc}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Photo Modal */}
-      {selectedPhoto && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.75)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            padding: '20px',
-          }}
-          onClick={() => setSelectedPhoto(null)}
-        >
-          <div
-            style={{
-              background: '#ffffff',
-              padding: '10px',
-              border: '2px outset #ffffff',
-              maxWidth: '90%',
-              maxHeight: '90%',
-              boxShadow: '0 6px 20px rgba(0,0,0,0.5)',
-            }}
-            onClick={(e) => e.stopPropagation()}
+        <div className="cc-hero-actions">
+          <button
+            type="button"
+            className="cc-btn cc-btn--primary"
+            onClick={() => setActiveTab('downloads')}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ fontWeight: 'bold' }}>Снимок экрана KeshOS Brownie</span>
-              <button className="win-btn" onClick={() => setSelectedPhoto(null)}>
-                Закрыть ✕
+            Скачать образ (390 МБ)
+          </button>
+          <button
+            type="button"
+            className="cc-btn"
+            onClick={() => setActiveTab('about')}
+          >
+            Возможности системы
+          </button>
+          <a href="#history" className="cc-btn">
+            История создания
+          </a>
+        </div>
+
+        {/* The Slab: Physical display frame under screenshot */}
+        <div className="cc-slab">
+          <div className="cc-slab-inner">
+            <img
+              src={screenDesktop}
+              alt="Рабочий стол KeshOS Brownie"
+              className="cc-slab-img"
+            />
+            <div className="cc-slab-caption">
+              Рабочий стол KeshOS 0.8.2 Brownie
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Fact Strip: .cc-facts */}
+      <section className="cc-facts" aria-label="Технические показатели">
+        <div className="cc-fact-item">
+          <div className="cc-fact-num">128 МБ</div>
+          <div className="cc-fact-label">минимум оперативной памяти для запуска</div>
+        </div>
+        <div className="cc-fact-item">
+          <div className="cc-fact-num">5–15 с</div>
+          <div className="cc-fact-label">время полной загрузки в RAM-диск</div>
+        </div>
+        <div className="cc-fact-item">
+          <div className="cc-fact-num">390 МБ</div>
+          <div className="cc-fact-label">размер универсального гибридного ISO</div>
+        </div>
+        <div className="cc-fact-item">
+          <div className="cc-fact-num">NT 5.2</div>
+          <div className="cc-fact-label">совместимость с Win32-программами и драйверами</div>
+        </div>
+      </section>
+
+      {/* Screenshots Gallery */}
+      <section className="cc-section">
+        <div className="cc-section-header">
+          <span className="cc-section-tag">Интерфейс</span>
+          <h2>Снимки экрана KeshOS Brownie</h2>
+          <p className="cc-lead" style={{ marginTop: 8 }}>
+            Пошаговый мастер первой настройки OOBE, классический проводник и системный загрузчик. Нажмите на любой снимок для детального просмотра.
+          </p>
+        </div>
+
+        <div className="cc-gallery-grid">
+          {galleryItems.map((item) => (
+            <div
+              key={item.id}
+              className="cc-gallery-card"
+              onClick={() => setSelectedPhoto(item.src)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  setSelectedPhoto(item.src);
+                }
+              }}
+            >
+              <img src={item.src} alt={item.title} className="cc-gallery-thumb" />
+              <div className="cc-gallery-info">
+                <div className="cc-gallery-title">{item.title}</div>
+                <div className="cc-gallery-desc">{item.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Project History */}
+      <section id="history" className="cc-section">
+        <div className="cc-section-header">
+          <span className="cc-section-tag">Хроника</span>
+          <h2>Как рождался KeshOS и кодовое имя «Brownie»</h2>
+          <p className="cc-lead" style={{ marginTop: 8 }}>
+            Искренний рассказ о пути от первой строчки кода до рабочего стола на реальном компьютере.
+          </p>
+        </div>
+
+        <div className="cc-panel" style={{ margin: '0 0 32px 0' }}>
+          <p style={{ marginBottom: 16 }}>
+            Всё началось с простого желания: сделать лёгкую операционную систему, которой приятно пользоваться самим. Без фоновых процессов сбора телеметрии, без навязанных онлайн-аккаунтов и громоздких интерфейсов. Мы хотели вернуть ощущение прямого контроля над компьютером, когда система откликается мгновенно и служит рабочим инструментом.
+          </p>
+          <blockquote
+            style={{
+              borderLeft: '3px solid var(--cc-accent)',
+              paddingLeft: 16,
+              margin: '20px 0',
+              fontStyle: 'italic',
+              color: 'var(--cc-text)',
+            }}
+          >
+            «Путь от первой строчки кода до загрузки рабочего стола на реальном железе оказался сложнее, чем казалось в начале. Но именно преодоление багов сделало систему надёжной.»
+          </blockquote>
+          <p style={{ marginBottom: 16 }}>
+            Сначала мы пробовали писать собственное ядро на <strong>Rust</strong>. Изучали спецификации OSDev, регистры x86, писали диспетчер памяти и обработчики прерываний. Однако написание ядра — это малая часть дела: для повседневной работы требуются сотни драйверов видеокарт, звуковых чипов, контроллеров накопителей и сети.
+          </p>
+          <p style={{ marginBottom: 16 }}>
+            После экспериментов с SayoriOS и долгой отладки сетевого стека мы перешли на проверенную тридцатью годами архитектуру <strong>Windows NT на базе технологий ReactOS</strong>. Это дало нативную совместимость с программами Win32, богатую базу драйверов и стабильный проводник.
+          </p>
+          <p>
+            Кодовое имя <strong>«Brownie»</strong> выбрано потому, что мы хотели подарить уют и тепло: мягкие кофейно-шоколадные тона, как горячий кофе и свежий брауни прохладной ночью, напоминают о том, что технологии должны приносить радость.
+          </p>
+        </div>
+
+        {/* Milestone cards */}
+        <div className="cc-card-grid">
+          <div className="cc-card">
+            <span className="cc-chip">Этап 1 • 2024–2025</span>
+            <div className="cc-card-title">Микроядро на Rust</div>
+            <div className="cc-card-desc">
+              Изучение архитектуры x86, переключения режимов реального и защищённого режима, низкоуровневая работа с памятью.
+            </div>
+          </div>
+
+          <div className="cc-card">
+            <span className="cc-chip">Этап 2 • 2025</span>
+            <div className="cc-card-title">Опыт SayoriOS</div>
+            <div className="cc-card-desc">
+              Тестирование графических режимов и выявление архитектурных ограничений для повседневных задач.
+            </div>
+          </div>
+
+          <div className="cc-card">
+            <span className="cc-chip">Этап 3 • 2025–2026</span>
+            <div className="cc-card-title">Отладка и первый пинг</div>
+            <div className="cc-card-desc">
+              Борьба с падениями стека ядра и первый успешный сетевой ICMP-ответ, подтвердивший работу стека.
+            </div>
+          </div>
+
+          <div className="cc-card">
+            <span className="cc-chip cc-chip--accent">Актуальный выпуск</span>
+            <div className="cc-card-title">Релиз 0.8.2 Brownie</div>
+            <div className="cc-card-desc">
+              Стабильный мастер OOBE, универсальный образ BootCD с Live RAM-диском, авторский визуальный стиль Brownie.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Modal image viewer */}
+      {selectedPhoto && (
+        <div className="cc-modal-overlay" onClick={() => setSelectedPhoto(null)}>
+          <div className="cc-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="cc-modal-header">
+              <span style={{ fontWeight: 600, fontSize: '0.94rem' }}>
+                Просмотр снимка экрана
+              </span>
+              <button
+                type="button"
+                className="cc-btn cc-btn--small"
+                onClick={() => setSelectedPhoto(null)}
+              >
+                Закрыть
               </button>
             </div>
-            <img src={selectedPhoto} alt="KeshOS Preview" style={{ maxWidth: '100%', maxHeight: '75vh', display: 'block' }} />
+            <img src={selectedPhoto} alt="Снимок экрана KeshOS" className="cc-modal-img" />
           </div>
         </div>
       )}
-
-      {/* OS Comparison Table */}
-      <div className="ms-card" style={{ marginTop: '20px', marginBottom: '16px' }}>
-        <div className="ms-card-header">
-          <span>Сравнение технических параметров</span>
-        </div>
-        <table className="ms-table">
-          <thead>
-            <tr>
-              <th style={{ width: '25%' }}>Параметр</th>
-              <th style={{ width: '40%' }}>KeshOS Workstation (Brownie)</th>
-              <th style={{ width: '35%' }}>Типичные современные ОС</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><strong>Потребление RAM</strong></td>
-              <td style={{ color: '#006600', fontWeight: 'bold' }}>От 128 MB (полный запуск из памяти)</td>
-              <td>От 4 GB до 8 GB ОЗУ</td>
-            </tr>
-            <tr>
-              <td><strong>Время старта</strong></td>
-              <td style={{ color: '#006600', fontWeight: 'bold' }}>От 5 до 15 секунд с момента включения</td>
-              <td>Минуты фоновых обновлений и служб</td>
-            </tr>
-            <tr>
-              <td><strong>Универсальность</strong></td>
-              <td>Один гибридный ISO (Live RAM + Setup)</td>
-              <td>Разрозненные установочные образы</td>
-            </tr>
-            <tr>
-              <td><strong>Совместимость</strong></td>
-              <td>Нативный запуск приложений Win32</td>
-              <td>Отказ от обратной совместимости</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 };
