@@ -18,6 +18,7 @@
   <a href="https://github.com/limine-bootloader/limine"><img src="https://img.shields.io/badge/bootloader-Limine-brightgreen.svg" alt="Bootloader"></a>
   <a href="#architecture"><img src="https://img.shields.io/badge/kernel-C%20%2F%20ASM%20(Ring%200)-orange.svg" alt="Kernel"></a>
   <a href="#gui--windowing"><img src="https://img.shields.io/badge/compositor-KeshShell%20(C%2B%2B)-purple.svg" alt="Compositor"></a>
+  <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-EULA-blue.svg" alt="License"></a>
   <a href="https://discord.gg/YgMe7ekA5y"><img src="https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
   <a href="https://www.reddit.com/r/sneakdeak/"><img src="https://img.shields.io/badge/Reddit-r%2Fsneakdeak-FF4500?logo=reddit&logoColor=white" alt="Reddit"></a>
 </p>
@@ -176,3 +177,14 @@ KeshOS is developed by **SneakDeak Tech**. We welcome OS developers, low-level e
 
 - **Discord Server:** [discord.gg/YgMe7ekA5y](https://discord.gg/YgMe7ekA5y)
 - **Subreddit:** [r/sneakdeak](https://www.reddit.com/r/sneakdeak/)
+
+---
+
+## 📄 License & EULA
+
+KeshOS Workstation is distributed under the SneakDeak Technologies End User License Agreement (EULA).
+
+* **English:** [LICENSE.md](LICENSE.md) | [EULA.md](EULA.md)
+* **Русский:** [LICENSE.ru.md](LICENSE.ru.md) | [EULA.ru.md](EULA.ru.md)
+
+Open-source components retain their respective upstream licenses.

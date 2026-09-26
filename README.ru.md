@@ -18,6 +18,7 @@
   <a href="https://github.com/limine-bootloader/limine"><img src="https://img.shields.io/badge/загрузчик-Limine-brightgreen.svg" alt="Загрузчик"></a>
   <a href="#архитектура-и-стек-технологий"><img src="https://img.shields.io/badge/ядро-C%20%2F%20ASM%20(Ring%200)-orange.svg" alt="Ядро"></a>
   <a href="#3-графическая-подсистема-и-композитор-keshshell"><img src="https://img.shields.io/badge/композитор-KeshShell%20(C%2B%2B)-purple.svg" alt="Композитор"></a>
+  <a href="LICENSE.ru.md"><img src="https://img.shields.io/badge/лицензия-EULA-blue.svg" alt="Лицензия"></a>
   <a href="https://discord.gg/YgMe7ekA5y"><img src="https://img.shields.io/badge/Discord-Присоединиться-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
   <a href="https://www.reddit.com/r/sneakdeak/"><img src="https://img.shields.io/badge/Reddit-r%2Fsneakdeak-FF4500?logo=reddit&logoColor=white" alt="Reddit"></a>
 </p>
@@ -176,3 +177,14 @@ KeshOS разрабатывается командой **SneakDeak Tech**. Мы 
 
 - **Discord-сервер:** [discord.gg/YgMe7ekA5y](https://discord.gg/YgMe7ekA5y)
 - **Subreddit:** [r/sneakdeak](https://www.reddit.com/r/sneakdeak/)
+
+---
+
+## 📄 Лицензия и EULA
+
+KeshOS Workstation распространяется на условиях Лицензионного соглашения с конечным пользователем (EULA) SneakDeak Technologies.
+
+* **Русская версия:** [LICENSE.ru.md](LICENSE.ru.md) | [EULA.ru.md](EULA.ru.md)
+* **English version:** [LICENSE.md](LICENSE.md) | [EULA.md](EULA.md)
+
+Открытые компоненты распространяются в соответствии с их исходными лицензиями.
