@@ -1,16 +1,25 @@
-# KeshOS 1.0 "Drop"
+<p align="center">
+  <img src="logo.png" alt="KeshOS Logo" width="160">
+</p>
 
-[![Architecture: x86_64](https://img.shields.io/badge/arch-x86__64-blue.svg)](#architecture)
-[![Boot: Limine](https://img.shields.io/badge/bootloader-Limine-brightgreen.svg)](https://github.com/limine-bootloader/limine)
-[![Kernel: C/ASM Ring 0](https://img.shields.io/badge/kernel-C%20%2F%20ASM%20(Ring%200)-orange.svg)](#architecture)
-[![Compositor: C++](https://img.shields.io/badge/compositor-KeshShell%20(C%2B%2B)-purple.svg)](#gui--windowing)
-[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/YgMe7ekA5y)
-[![Subreddit](https://img.shields.io/badge/Reddit-r%2Fsneakdeak-FF4500?logo=reddit&logoColor=white)](https://www.reddit.com/r/sneakdeak/)
-
-> **KeshOS** is an independent, lightweight 64-bit desktop operating system featuring the **KeshShell** composited desktop interface. Built from the ground up by the indie team **SneakDeak**.
+<h1 align="center">KeshOS 1.0 "Drop" (RC1)</h1>
 
 <p align="center">
-  <img src="docs/assets/keshos_desktop_showcase.png" alt="KeshOS Desktop Showcase" width="850">
+  <b>Independent, lightweight 64-bit desktop operating system with a composited desktop environment.</b><br>
+  Built from scratch by <b>SneakDeak Tech</b>.
+</p>
+
+<p align="center">
+  <a href="README.ru.md">🇷🇺 <b>Читать на русском</b></a>
+</p>
+
+<p align="center">
+  <a href="#architecture"><img src="https://img.shields.io/badge/arch-x86__64-blue.svg" alt="Architecture"></a>
+  <a href="https://github.com/limine-bootloader/limine"><img src="https://img.shields.io/badge/bootloader-Limine-brightgreen.svg" alt="Bootloader"></a>
+  <a href="#architecture"><img src="https://img.shields.io/badge/kernel-C%20%2F%20ASM%20(Ring%200)-orange.svg" alt="Kernel"></a>
+  <a href="#gui--windowing"><img src="https://img.shields.io/badge/compositor-KeshShell%20(C%2B%2B)-purple.svg" alt="Compositor"></a>
+  <a href="https://discord.gg/YgMe7ekA5y"><img src="https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
+  <a href="https://www.reddit.com/r/sneakdeak/"><img src="https://img.shields.io/badge/Reddit-r%2Fsneakdeak-FF4500?logo=reddit&logoColor=white" alt="Reddit"></a>
 </p>
 
 ---
@@ -33,7 +42,7 @@ Modern desktop operating systems have left capable 2011–2016 x86_64 machines b
 +-------------------------------------------------------+
 |  Ring 3 (Userland)                                    |
 |   - KeshShell (C++ Client-Server Window Compositor)   |
-|   - Native Apps: Paint, Explorer, Task Manager, Shell |
+|   - Native Apps: Dolphin, Notepad, TaskMgr, Paint     |
 |   - Native .kea binaries linked against /system/lib   |
 +-------------------------------------------------------+
 |  (System Calls: Fast SYSCALL/SYSRETQ & Kernel IPC)    |
@@ -57,17 +66,13 @@ Modern desktop operating systems have left capable 2011–2016 x86_64 machines b
 ### 2. Kernel & Memory Management
 * **Monolithic architecture** implemented in raw C and x86_64 Assembly.
 * Memory management using **4-level paging (PML4)**, providing separate virtual address spaces for kernel and userland processes.
-* **Hardware-enforced Ring 3 isolation:** Faults and segmentation crashes in user applications are trapped by kernel interrupt handlers (`#GP`, `#PF`, `#UD`) without compromising the compositor or the OS session.
+* **Hardware-enforced Ring 3 isolation:** Faults and crashes in user applications are trapped by kernel interrupt handlers (`#GP`, `#PF`, `#UD`) without compromising the compositor or the OS session.
 
 ### 3. GUI & Compositing (KeshShell)
 * Custom client-server window compositor written in modern C++.
 * Applications render to isolated shared offscreen surface buffers (`0x50000000`).
 * The compositor performs z-ordering, window decorations ("traffic light" controls, modern composited styling), and blits dirty rectangles to a double-buffered linear framebuffer.
 * Asynchronous input routing (mouse & keyboard) dispatched via kernel syscall event queue (`SYS_POLL_EVENT`).
-
-<p align="center">
-  <img src="docs/assets/kesh_paint_ring3.png" alt="Kesh Paint running in isolated Ring 3" width="750">
-</p>
 
 ### 4. Networking Stack
 * In-kernel bare-metal networking stack with Intel **e1000** Gigabit Ethernet support:
@@ -77,20 +82,15 @@ Modern desktop operating systems have left capable 2011–2016 x86_64 machines b
   * Lightweight TLS capabilities via embedded BearSSL.
 
 ### 5. Application Packaging & File System
-* **`.kea` Packages:** Native userland package format built on top of the ELF64 standard with structured metadata headers, dynamically linked with system runtimes (`/system/lib/ksh64`).
-* **Unix-like VFS:** Clean tree structure (`/`, `/apps`, `/system`, `/hdd`, `/cdrom`) with support for FAT32 and ISO 9660 filesystems.
-* **Dolphin-inspired File Manager:** Modern C++ file manager with breadcrumb navigation, grid/list view modes, and direct storage inspection.
-
-<p align="center">
-  <img src="docs/assets/kesh_explorer_showcase.png" alt="KeshOS Explorer Showcase" width="750">
-</p>
+* **`.kea` Packages:** Native userland package format built on top of the ELF64 standard with structured metadata headers, dynamically linked with system runtimes.
+* **Unix-like VFS:** Clean tree structure (`/`, `/apps`, `/system`, `/hdd`, `/cdrom`) with support for in-memory nodes, FAT32, and ISO 9660 filesystems.
+* **Dolphin File Manager:** Modern C++ file manager with breadcrumb navigation, grid/list view modes, and direct storage inspection.
 
 ---
 
 ## 🔍 Development Transparency & Methodology
 
 * **The Core:** Memory management (PMM/VMM), PML4 setup, Ring 3 context switching, IPC, the C++ framebuffer compositor, storage drivers, and packet handlers were manually written, debugged, and validated.
-* **AI Assistance:** In the spirit of engineering transparency, ~20% of the codebase utilized AI assistance for generating boilerplate routines, initial scaffolding, and UI layout coordinate calculations.
 * **Privacy:** 100% offline-first. Zero telemetry. Network interfaces only initiate outbound traffic upon explicit user commands.
 
 ---
@@ -101,7 +101,7 @@ Modern desktop operating systems have left capable 2011–2016 x86_64 machines b
 
 Ensure you have the following host tools installed:
 
-* **LLVM / Clang** (`clang`, `clang++`, `lld`) or `x86_64-elf-gcc`
+* **LLVM / Clang** (`clang`, `clang++`, `ld.lld`) or `x86_64-elf-gcc`
 * **NASM** (x86_64 assembler)
 * **Ninja** build system & **Python 3**
 * **xorriso** (for bootable ISO creation)
@@ -147,9 +147,10 @@ make qemu
 #### Running in VirtualBox:
 1. Create a VM with type **Other / Unknown (64-bit)**.
 2. Set Memory to **1024 MB – 2048 MB**, Video Memory to **32 MB – 64 MB**.
-3. Attach `build/keshos.iso` to the Optical Drive.
-4. Enable **Intel PRO/1000 MT Desktop (82540EM)** for network emulation.
-5. Start the VM and enjoy the desktop!
+3. In **System -> Motherboard -> Boot Order**, set **Optical Drive** as the first boot device.
+4. Attach `build/keshos.iso` to the Optical Drive.
+5. Enable **Intel PRO/1000 MT Desktop (82540EM)** for network emulation.
+6. Start the VM and enjoy KeshOS!
 
 ---
 
@@ -159,7 +160,7 @@ make qemu
 - [x] 4-level paging (PML4) & Ring 3 hardware isolation
 - [x] Linear framebuffer compositor (KeshShell) with double-buffering & composited UI
 - [x] In-kernel ARP, ICMP ping, and DNS resolver
-- [x] Native Ring 3 applications (Kesh Paint, Explorer, Task Manager, Shell, Notepad, Settings)
+- [x] Native Ring 3 applications (Dolphin Explorer, Notepad, Task Manager, Paint, Terminal, Settings)
 - [x] Native `.kea` packaging pipeline and runtime execution
 - [x] **Release Candidate 1 (RC1) Public ISO Build**
 - [ ] Read/Write Ext4 filesystem persistence with extent tree parsing
@@ -171,8 +172,7 @@ make qemu
 
 ## 💬 Community & Contributing
 
-KeshOS is developed by **SneakDeak**. We welcome OS developers, low-level enthusiasts, and testers!
+KeshOS is developed by **SneakDeak Tech**. We welcome OS developers, low-level enthusiasts, and testers!
 
 - **Discord Server:** [discord.gg/YgMe7ekA5y](https://discord.gg/YgMe7ekA5y)
 - **Subreddit:** [r/sneakdeak](https://www.reddit.com/r/sneakdeak/)
-- **Official Website:** [kesh.sneakdeak.net](https://kesh.sneakdeak.net/)
