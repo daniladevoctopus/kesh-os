@@ -1,0 +1,544 @@
+cc = D:/keshos-toolchain/KeshBE/bin/clang.exe
+cxx = D:/keshos-toolchain/KeshBE/bin/clang++.exe
+kernel_ld = D:/keshos-toolchain/KeshBE/bin/ld.lld.exe
+ar = D:/keshos-toolchain/KeshBE/bin/llvm-ar.exe
+
+cflags = --target=x86_64-unknown-elf -m64 -ffreestanding -fno-stack-protector -fno-pie -fno-pic -mno-red-zone -mcmodel=kernel -O2 -Wall -Wextra -Wno-unused -Wno-unused-parameter -Wno-pointer-bool-conversion -DNULL=0 -Isrc/gui/apps/doom/fs_include -Iinclude -Ikernel -Isrc -Ikernel/include -Isrc/drivers/net/bearssl/inc -Isrc/drivers/net/bearssl/src -Isrc/gui/apps/doom -Isrc/gui/apps/doom/engine -DDOOMGENERIC_RESX=320 -DDOOMGENERIC_RESY=200
+asm_cflags = --target=x86_64-unknown-elf -m64 -ffreestanding -fno-stack-protector -fno-pie -fno-pic -mno-red-zone
+ldflags = -m elf_x86_64 -no-pie -T kernel/linker.ld
+
+user_cflags = --target=x86_64-unknown-elf -m64 -ffreestanding -fno-stack-protector -fno-pie -fno-pic -mcmodel=small -O2 -Wall -Wextra -Iuserspace/include -Isrc/gui
+user_cxxflags = --target=x86_64-unknown-elf -m64 -ffreestanding -fno-stack-protector -fno-pie -fno-pic -fno-exceptions -fno-rtti -fno-threadsafe-statics -mcmodel=small -O2 -Wall -Wextra -Iuserspace/include -Isrc/gui
+user_ldflags = -m elf_x86_64 -no-pie -T userspace/app.ld
+
+rule cc
+  command = $cc $cflags -c $in -o $out
+  description = CC $out
+
+rule ar
+  command = $ar rcs $out $in
+  description = AR $out
+
+rule kernel_asm
+  command = $cc $asm_cflags -c $in -o $out
+  description = ASM $out
+
+rule link
+  command = $kernel_ld $ldflags $in -o $out
+  description = LINK $out
+
+rule user_cc
+  command = $cc $user_cflags -c $in -o $out
+  description = USER_CC $out
+
+rule user_cxx
+  command = $cxx $user_cxxflags -c $in -o $out
+  description = USER_CXX $out
+
+rule user_asm
+  command = $cc $asm_cflags -c $in -o $out
+  description = USER_ASM $out
+
+rule user_link
+  command = $kernel_ld $user_ldflags $in -o $out
+  description = USER_LINK $out
+
+# Userspace Standalone Applications
+build build/userspace/crt0.o: user_asm userspace/lib/crt0.S
+build build/userspace/kesh.o: user_cc userspace/lib/kesh.c
+build build/userspace/font.o: user_cc src/gui/font.c
+
+build build/userspace/notepad.o: user_cc userspace/apps/notepad/main.c
+build build/apps/notepad.elf: user_link build/userspace/crt0.o build/userspace/kesh.o build/userspace/font.o build/userspace/notepad.o | userspace/app.ld
+
+build build/userspace/explorer.o: user_cxx userspace/apps/explorer/main.cpp
+build build/apps/explorer.elf: user_link build/userspace/crt0.o build/userspace/kesh.o build/userspace/font.o build/userspace/explorer.o | userspace/app.ld
+
+build build/userspace/taskmgr.o: user_cc userspace/apps/taskmgr/main.c
+build build/apps/taskmgr.elf: user_link build/userspace/crt0.o build/userspace/kesh.o build/userspace/font.o build/userspace/taskmgr.o | userspace/app.ld
+
+build build/userspace/paint.o: user_cc userspace/apps/paint/main.c
+build build/apps/paint.elf: user_link build/userspace/crt0.o build/userspace/kesh.o build/userspace/font.o build/userspace/paint.o | userspace/app.ld
+
+build build/userspace/shell.o: user_cc userspace/apps/shell/main.c
+build build/apps/shell.elf: user_link build/userspace/crt0.o build/userspace/kesh.o build/userspace/font.o build/userspace/shell.o | userspace/app.ld
+
+build build/userspace/settings.o: user_cxx userspace/apps/settings/main.cpp
+build build/apps/settings.elf: user_link build/userspace/crt0.o build/userspace/kesh.o build/userspace/font.o build/userspace/settings.o | userspace/app.ld
+
+build build/userspace/browser.o: user_cc userspace/apps/browser/main.c
+build build/apps/browser.elf: user_link build/userspace/crt0.o build/userspace/kesh.o build/userspace/font.o build/userspace/browser.o | userspace/app.ld
+
+rule kea_pack
+  command = python tools/kea-pack.py --elf $in --out $out --name $app_name --ver 1.0.0 --author KeshOS --category $app_cat --desc $app_desc
+  description = KEA_PACK $out
+
+build build/apps/notepad.kea: kea_pack build/apps/notepad.elf
+  app_name = Notepad
+  app_cat = Utilities
+  app_desc = "Native text editor for KeshOS"
+
+build build/apps/explorer.kea: kea_pack build/apps/explorer.elf
+  app_name = Explorer
+  app_cat = System
+  app_desc = "File manager for KeshOS"
+
+build build/apps/taskmgr.kea: kea_pack build/apps/taskmgr.elf
+  app_name = TaskMgr
+  app_cat = System
+  app_desc = "Process manager and system monitor"
+
+build build/apps/paint.kea: kea_pack build/apps/paint.elf
+  app_name = Paint
+  app_cat = Graphics
+  app_desc = "Native drawing and sketching app"
+
+build build/apps/shell.kea: kea_pack build/apps/shell.elf
+  app_name = Shell
+  app_cat = System
+  app_desc = "Native modular desktop shell"
+
+build build/apps/settings.kea: kea_pack build/apps/settings.elf
+  app_name = Settings
+  app_cat = System
+  app_desc = "System Settings for KeshOS"
+
+build build/apps/browser.kea: kea_pack build/apps/browser.elf
+  app_name = Browser
+  app_cat = Internet
+  app_desc = "Native KeshOS web client"
+
+build build/userspace/about.o: user_cc userspace/apps/about/main.c
+build build/apps/about.elf: user_link build/userspace/crt0.o build/userspace/kesh.o build/userspace/font.o build/userspace/about.o | userspace/app.ld
+
+build build/apps/about.kea: kea_pack build/apps/about.elf
+  app_name = About
+  app_cat = System
+  app_desc = "About KeshOS system information"
+
+build build/bearssl/settings.o: cc src/drivers/net/bearssl/src/settings.c
+build build/bearssl/aead_ccm.o: cc src/drivers/net/bearssl/src/aead/ccm.c
+build build/bearssl/aead_eax.o: cc src/drivers/net/bearssl/src/aead/eax.c
+build build/bearssl/aead_gcm.o: cc src/drivers/net/bearssl/src/aead/gcm.c
+build build/bearssl/codec_ccopy.o: cc src/drivers/net/bearssl/src/codec/ccopy.c
+build build/bearssl/codec_dec16be.o: cc src/drivers/net/bearssl/src/codec/dec16be.c
+build build/bearssl/codec_dec16le.o: cc src/drivers/net/bearssl/src/codec/dec16le.c
+build build/bearssl/codec_dec32be.o: cc src/drivers/net/bearssl/src/codec/dec32be.c
+build build/bearssl/codec_dec32le.o: cc src/drivers/net/bearssl/src/codec/dec32le.c
+build build/bearssl/codec_dec64be.o: cc src/drivers/net/bearssl/src/codec/dec64be.c
+build build/bearssl/codec_dec64le.o: cc src/drivers/net/bearssl/src/codec/dec64le.c
+build build/bearssl/codec_enc16be.o: cc src/drivers/net/bearssl/src/codec/enc16be.c
+build build/bearssl/codec_enc16le.o: cc src/drivers/net/bearssl/src/codec/enc16le.c
+build build/bearssl/codec_enc32be.o: cc src/drivers/net/bearssl/src/codec/enc32be.c
+build build/bearssl/codec_enc32le.o: cc src/drivers/net/bearssl/src/codec/enc32le.c
+build build/bearssl/codec_enc64be.o: cc src/drivers/net/bearssl/src/codec/enc64be.c
+build build/bearssl/codec_enc64le.o: cc src/drivers/net/bearssl/src/codec/enc64le.c
+build build/bearssl/codec_pemdec.o: cc src/drivers/net/bearssl/src/codec/pemdec.c
+build build/bearssl/codec_pemenc.o: cc src/drivers/net/bearssl/src/codec/pemenc.c
+build build/bearssl/ec_ec_all_m15.o: cc src/drivers/net/bearssl/src/ec/ec_all_m15.c
+build build/bearssl/ec_ec_all_m31.o: cc src/drivers/net/bearssl/src/ec/ec_all_m31.c
+build build/bearssl/ec_ec_c25519_i15.o: cc src/drivers/net/bearssl/src/ec/ec_c25519_i15.c
+build build/bearssl/ec_ec_c25519_i31.o: cc src/drivers/net/bearssl/src/ec/ec_c25519_i31.c
+build build/bearssl/ec_ec_c25519_m15.o: cc src/drivers/net/bearssl/src/ec/ec_c25519_m15.c
+build build/bearssl/ec_ec_c25519_m31.o: cc src/drivers/net/bearssl/src/ec/ec_c25519_m31.c
+build build/bearssl/ec_ec_c25519_m62.o: cc src/drivers/net/bearssl/src/ec/ec_c25519_m62.c
+build build/bearssl/ec_ec_c25519_m64.o: cc src/drivers/net/bearssl/src/ec/ec_c25519_m64.c
+build build/bearssl/ec_ec_curve25519.o: cc src/drivers/net/bearssl/src/ec/ec_curve25519.c
+build build/bearssl/ec_ec_default.o: cc src/drivers/net/bearssl/src/ec/ec_default.c
+build build/bearssl/ec_ec_keygen.o: cc src/drivers/net/bearssl/src/ec/ec_keygen.c
+build build/bearssl/ec_ec_p256_m15.o: cc src/drivers/net/bearssl/src/ec/ec_p256_m15.c
+build build/bearssl/ec_ec_p256_m31.o: cc src/drivers/net/bearssl/src/ec/ec_p256_m31.c
+build build/bearssl/ec_ec_p256_m62.o: cc src/drivers/net/bearssl/src/ec/ec_p256_m62.c
+build build/bearssl/ec_ec_p256_m64.o: cc src/drivers/net/bearssl/src/ec/ec_p256_m64.c
+build build/bearssl/ec_ec_prime_i15.o: cc src/drivers/net/bearssl/src/ec/ec_prime_i15.c
+build build/bearssl/ec_ec_prime_i31.o: cc src/drivers/net/bearssl/src/ec/ec_prime_i31.c
+build build/bearssl/ec_ec_pubkey.o: cc src/drivers/net/bearssl/src/ec/ec_pubkey.c
+build build/bearssl/ec_ec_secp256r1.o: cc src/drivers/net/bearssl/src/ec/ec_secp256r1.c
+build build/bearssl/ec_ec_secp384r1.o: cc src/drivers/net/bearssl/src/ec/ec_secp384r1.c
+build build/bearssl/ec_ec_secp521r1.o: cc src/drivers/net/bearssl/src/ec/ec_secp521r1.c
+build build/bearssl/ec_ecdsa_atr.o: cc src/drivers/net/bearssl/src/ec/ecdsa_atr.c
+build build/bearssl/ec_ecdsa_default_sign_asn1.o: cc src/drivers/net/bearssl/src/ec/ecdsa_default_sign_asn1.c
+build build/bearssl/ec_ecdsa_default_sign_raw.o: cc src/drivers/net/bearssl/src/ec/ecdsa_default_sign_raw.c
+build build/bearssl/ec_ecdsa_default_vrfy_asn1.o: cc src/drivers/net/bearssl/src/ec/ecdsa_default_vrfy_asn1.c
+build build/bearssl/ec_ecdsa_default_vrfy_raw.o: cc src/drivers/net/bearssl/src/ec/ecdsa_default_vrfy_raw.c
+build build/bearssl/ec_ecdsa_i15_bits.o: cc src/drivers/net/bearssl/src/ec/ecdsa_i15_bits.c
+build build/bearssl/ec_ecdsa_i15_sign_asn1.o: cc src/drivers/net/bearssl/src/ec/ecdsa_i15_sign_asn1.c
+build build/bearssl/ec_ecdsa_i15_sign_raw.o: cc src/drivers/net/bearssl/src/ec/ecdsa_i15_sign_raw.c
+build build/bearssl/ec_ecdsa_i15_vrfy_asn1.o: cc src/drivers/net/bearssl/src/ec/ecdsa_i15_vrfy_asn1.c
+build build/bearssl/ec_ecdsa_i15_vrfy_raw.o: cc src/drivers/net/bearssl/src/ec/ecdsa_i15_vrfy_raw.c
+build build/bearssl/ec_ecdsa_i31_bits.o: cc src/drivers/net/bearssl/src/ec/ecdsa_i31_bits.c
+build build/bearssl/ec_ecdsa_i31_sign_asn1.o: cc src/drivers/net/bearssl/src/ec/ecdsa_i31_sign_asn1.c
+build build/bearssl/ec_ecdsa_i31_sign_raw.o: cc src/drivers/net/bearssl/src/ec/ecdsa_i31_sign_raw.c
+build build/bearssl/ec_ecdsa_i31_vrfy_asn1.o: cc src/drivers/net/bearssl/src/ec/ecdsa_i31_vrfy_asn1.c
+build build/bearssl/ec_ecdsa_i31_vrfy_raw.o: cc src/drivers/net/bearssl/src/ec/ecdsa_i31_vrfy_raw.c
+build build/bearssl/ec_ecdsa_rta.o: cc src/drivers/net/bearssl/src/ec/ecdsa_rta.c
+build build/bearssl/hash_dig_oid.o: cc src/drivers/net/bearssl/src/hash/dig_oid.c
+build build/bearssl/hash_dig_size.o: cc src/drivers/net/bearssl/src/hash/dig_size.c
+build build/bearssl/hash_ghash_ctmul.o: cc src/drivers/net/bearssl/src/hash/ghash_ctmul.c
+build build/bearssl/hash_ghash_ctmul32.o: cc src/drivers/net/bearssl/src/hash/ghash_ctmul32.c
+build build/bearssl/hash_ghash_ctmul64.o: cc src/drivers/net/bearssl/src/hash/ghash_ctmul64.c
+build build/bearssl/hash_ghash_pwr8.o: cc src/drivers/net/bearssl/src/hash/ghash_pwr8.c
+build build/bearssl/hash_md5.o: cc src/drivers/net/bearssl/src/hash/md5.c
+build build/bearssl/hash_md5sha1.o: cc src/drivers/net/bearssl/src/hash/md5sha1.c
+build build/bearssl/hash_mgf1.o: cc src/drivers/net/bearssl/src/hash/mgf1.c
+build build/bearssl/hash_multihash.o: cc src/drivers/net/bearssl/src/hash/multihash.c
+build build/bearssl/hash_sha1.o: cc src/drivers/net/bearssl/src/hash/sha1.c
+build build/bearssl/hash_sha2big.o: cc src/drivers/net/bearssl/src/hash/sha2big.c
+build build/bearssl/hash_sha2small.o: cc src/drivers/net/bearssl/src/hash/sha2small.c
+build build/bearssl/int_i15_add.o: cc src/drivers/net/bearssl/src/int/i15_add.c
+build build/bearssl/int_i15_bitlen.o: cc src/drivers/net/bearssl/src/int/i15_bitlen.c
+build build/bearssl/int_i15_decmod.o: cc src/drivers/net/bearssl/src/int/i15_decmod.c
+build build/bearssl/int_i15_decode.o: cc src/drivers/net/bearssl/src/int/i15_decode.c
+build build/bearssl/int_i15_decred.o: cc src/drivers/net/bearssl/src/int/i15_decred.c
+build build/bearssl/int_i15_encode.o: cc src/drivers/net/bearssl/src/int/i15_encode.c
+build build/bearssl/int_i15_fmont.o: cc src/drivers/net/bearssl/src/int/i15_fmont.c
+build build/bearssl/int_i15_iszero.o: cc src/drivers/net/bearssl/src/int/i15_iszero.c
+build build/bearssl/int_i15_moddiv.o: cc src/drivers/net/bearssl/src/int/i15_moddiv.c
+build build/bearssl/int_i15_modpow.o: cc src/drivers/net/bearssl/src/int/i15_modpow.c
+build build/bearssl/int_i15_modpow2.o: cc src/drivers/net/bearssl/src/int/i15_modpow2.c
+build build/bearssl/int_i15_montmul.o: cc src/drivers/net/bearssl/src/int/i15_montmul.c
+build build/bearssl/int_i15_mulacc.o: cc src/drivers/net/bearssl/src/int/i15_mulacc.c
+build build/bearssl/int_i15_muladd.o: cc src/drivers/net/bearssl/src/int/i15_muladd.c
+build build/bearssl/int_i15_ninv15.o: cc src/drivers/net/bearssl/src/int/i15_ninv15.c
+build build/bearssl/int_i15_reduce.o: cc src/drivers/net/bearssl/src/int/i15_reduce.c
+build build/bearssl/int_i15_rshift.o: cc src/drivers/net/bearssl/src/int/i15_rshift.c
+build build/bearssl/int_i15_sub.o: cc src/drivers/net/bearssl/src/int/i15_sub.c
+build build/bearssl/int_i15_tmont.o: cc src/drivers/net/bearssl/src/int/i15_tmont.c
+build build/bearssl/int_i31_add.o: cc src/drivers/net/bearssl/src/int/i31_add.c
+build build/bearssl/int_i31_bitlen.o: cc src/drivers/net/bearssl/src/int/i31_bitlen.c
+build build/bearssl/int_i31_decmod.o: cc src/drivers/net/bearssl/src/int/i31_decmod.c
+build build/bearssl/int_i31_decode.o: cc src/drivers/net/bearssl/src/int/i31_decode.c
+build build/bearssl/int_i31_decred.o: cc src/drivers/net/bearssl/src/int/i31_decred.c
+build build/bearssl/int_i31_encode.o: cc src/drivers/net/bearssl/src/int/i31_encode.c
+build build/bearssl/int_i31_fmont.o: cc src/drivers/net/bearssl/src/int/i31_fmont.c
+build build/bearssl/int_i31_iszero.o: cc src/drivers/net/bearssl/src/int/i31_iszero.c
+build build/bearssl/int_i31_moddiv.o: cc src/drivers/net/bearssl/src/int/i31_moddiv.c
+build build/bearssl/int_i31_modpow.o: cc src/drivers/net/bearssl/src/int/i31_modpow.c
+build build/bearssl/int_i31_modpow2.o: cc src/drivers/net/bearssl/src/int/i31_modpow2.c
+build build/bearssl/int_i31_montmul.o: cc src/drivers/net/bearssl/src/int/i31_montmul.c
+build build/bearssl/int_i31_mulacc.o: cc src/drivers/net/bearssl/src/int/i31_mulacc.c
+build build/bearssl/int_i31_muladd.o: cc src/drivers/net/bearssl/src/int/i31_muladd.c
+build build/bearssl/int_i31_ninv31.o: cc src/drivers/net/bearssl/src/int/i31_ninv31.c
+build build/bearssl/int_i31_reduce.o: cc src/drivers/net/bearssl/src/int/i31_reduce.c
+build build/bearssl/int_i31_rshift.o: cc src/drivers/net/bearssl/src/int/i31_rshift.c
+build build/bearssl/int_i31_sub.o: cc src/drivers/net/bearssl/src/int/i31_sub.c
+build build/bearssl/int_i31_tmont.o: cc src/drivers/net/bearssl/src/int/i31_tmont.c
+build build/bearssl/int_i32_add.o: cc src/drivers/net/bearssl/src/int/i32_add.c
+build build/bearssl/int_i32_bitlen.o: cc src/drivers/net/bearssl/src/int/i32_bitlen.c
+build build/bearssl/int_i32_decmod.o: cc src/drivers/net/bearssl/src/int/i32_decmod.c
+build build/bearssl/int_i32_decode.o: cc src/drivers/net/bearssl/src/int/i32_decode.c
+build build/bearssl/int_i32_decred.o: cc src/drivers/net/bearssl/src/int/i32_decred.c
+build build/bearssl/int_i32_div32.o: cc src/drivers/net/bearssl/src/int/i32_div32.c
+build build/bearssl/int_i32_encode.o: cc src/drivers/net/bearssl/src/int/i32_encode.c
+build build/bearssl/int_i32_fmont.o: cc src/drivers/net/bearssl/src/int/i32_fmont.c
+build build/bearssl/int_i32_iszero.o: cc src/drivers/net/bearssl/src/int/i32_iszero.c
+build build/bearssl/int_i32_modpow.o: cc src/drivers/net/bearssl/src/int/i32_modpow.c
+build build/bearssl/int_i32_montmul.o: cc src/drivers/net/bearssl/src/int/i32_montmul.c
+build build/bearssl/int_i32_mulacc.o: cc src/drivers/net/bearssl/src/int/i32_mulacc.c
+build build/bearssl/int_i32_muladd.o: cc src/drivers/net/bearssl/src/int/i32_muladd.c
+build build/bearssl/int_i32_ninv32.o: cc src/drivers/net/bearssl/src/int/i32_ninv32.c
+build build/bearssl/int_i32_reduce.o: cc src/drivers/net/bearssl/src/int/i32_reduce.c
+build build/bearssl/int_i32_sub.o: cc src/drivers/net/bearssl/src/int/i32_sub.c
+build build/bearssl/int_i32_tmont.o: cc src/drivers/net/bearssl/src/int/i32_tmont.c
+build build/bearssl/int_i62_modpow2.o: cc src/drivers/net/bearssl/src/int/i62_modpow2.c
+build build/bearssl/kdf_hkdf.o: cc src/drivers/net/bearssl/src/kdf/hkdf.c
+build build/bearssl/kdf_shake.o: cc src/drivers/net/bearssl/src/kdf/shake.c
+build build/bearssl/mac_hmac.o: cc src/drivers/net/bearssl/src/mac/hmac.c
+build build/bearssl/mac_hmac_ct.o: cc src/drivers/net/bearssl/src/mac/hmac_ct.c
+build build/bearssl/rand_aesctr_drbg.o: cc src/drivers/net/bearssl/src/rand/aesctr_drbg.c
+build build/bearssl/rand_hmac_drbg.o: cc src/drivers/net/bearssl/src/rand/hmac_drbg.c
+build build/bearssl/rsa_rsa_default_keygen.o: cc src/drivers/net/bearssl/src/rsa/rsa_default_keygen.c
+build build/bearssl/rsa_rsa_default_modulus.o: cc src/drivers/net/bearssl/src/rsa/rsa_default_modulus.c
+build build/bearssl/rsa_rsa_default_oaep_decrypt.o: cc src/drivers/net/bearssl/src/rsa/rsa_default_oaep_decrypt.c
+build build/bearssl/rsa_rsa_default_oaep_encrypt.o: cc src/drivers/net/bearssl/src/rsa/rsa_default_oaep_encrypt.c
+build build/bearssl/rsa_rsa_default_pkcs1_sign.o: cc src/drivers/net/bearssl/src/rsa/rsa_default_pkcs1_sign.c
+build build/bearssl/rsa_rsa_default_pkcs1_vrfy.o: cc src/drivers/net/bearssl/src/rsa/rsa_default_pkcs1_vrfy.c
+build build/bearssl/rsa_rsa_default_priv.o: cc src/drivers/net/bearssl/src/rsa/rsa_default_priv.c
+build build/bearssl/rsa_rsa_default_privexp.o: cc src/drivers/net/bearssl/src/rsa/rsa_default_privexp.c
+build build/bearssl/rsa_rsa_default_pss_sign.o: cc src/drivers/net/bearssl/src/rsa/rsa_default_pss_sign.c
+build build/bearssl/rsa_rsa_default_pss_vrfy.o: cc src/drivers/net/bearssl/src/rsa/rsa_default_pss_vrfy.c
+build build/bearssl/rsa_rsa_default_pub.o: cc src/drivers/net/bearssl/src/rsa/rsa_default_pub.c
+build build/bearssl/rsa_rsa_default_pubexp.o: cc src/drivers/net/bearssl/src/rsa/rsa_default_pubexp.c
+build build/bearssl/rsa_rsa_i15_keygen.o: cc src/drivers/net/bearssl/src/rsa/rsa_i15_keygen.c
+build build/bearssl/rsa_rsa_i15_modulus.o: cc src/drivers/net/bearssl/src/rsa/rsa_i15_modulus.c
+build build/bearssl/rsa_rsa_i15_oaep_decrypt.o: cc src/drivers/net/bearssl/src/rsa/rsa_i15_oaep_decrypt.c
+build build/bearssl/rsa_rsa_i15_oaep_encrypt.o: cc src/drivers/net/bearssl/src/rsa/rsa_i15_oaep_encrypt.c
+build build/bearssl/rsa_rsa_i15_pkcs1_sign.o: cc src/drivers/net/bearssl/src/rsa/rsa_i15_pkcs1_sign.c
+build build/bearssl/rsa_rsa_i15_pkcs1_vrfy.o: cc src/drivers/net/bearssl/src/rsa/rsa_i15_pkcs1_vrfy.c
+build build/bearssl/rsa_rsa_i15_priv.o: cc src/drivers/net/bearssl/src/rsa/rsa_i15_priv.c
+build build/bearssl/rsa_rsa_i15_privexp.o: cc src/drivers/net/bearssl/src/rsa/rsa_i15_privexp.c
+build build/bearssl/rsa_rsa_i15_pss_sign.o: cc src/drivers/net/bearssl/src/rsa/rsa_i15_pss_sign.c
+build build/bearssl/rsa_rsa_i15_pss_vrfy.o: cc src/drivers/net/bearssl/src/rsa/rsa_i15_pss_vrfy.c
+build build/bearssl/rsa_rsa_i15_pub.o: cc src/drivers/net/bearssl/src/rsa/rsa_i15_pub.c
+build build/bearssl/rsa_rsa_i15_pubexp.o: cc src/drivers/net/bearssl/src/rsa/rsa_i15_pubexp.c
+build build/bearssl/rsa_rsa_i31_keygen.o: cc src/drivers/net/bearssl/src/rsa/rsa_i31_keygen.c
+build build/bearssl/rsa_rsa_i31_keygen_inner.o: cc src/drivers/net/bearssl/src/rsa/rsa_i31_keygen_inner.c
+build build/bearssl/rsa_rsa_i31_modulus.o: cc src/drivers/net/bearssl/src/rsa/rsa_i31_modulus.c
+build build/bearssl/rsa_rsa_i31_oaep_decrypt.o: cc src/drivers/net/bearssl/src/rsa/rsa_i31_oaep_decrypt.c
+build build/bearssl/rsa_rsa_i31_oaep_encrypt.o: cc src/drivers/net/bearssl/src/rsa/rsa_i31_oaep_encrypt.c
+build build/bearssl/rsa_rsa_i31_pkcs1_sign.o: cc src/drivers/net/bearssl/src/rsa/rsa_i31_pkcs1_sign.c
+build build/bearssl/rsa_rsa_i31_pkcs1_vrfy.o: cc src/drivers/net/bearssl/src/rsa/rsa_i31_pkcs1_vrfy.c
+build build/bearssl/rsa_rsa_i31_priv.o: cc src/drivers/net/bearssl/src/rsa/rsa_i31_priv.c
+build build/bearssl/rsa_rsa_i31_privexp.o: cc src/drivers/net/bearssl/src/rsa/rsa_i31_privexp.c
+build build/bearssl/rsa_rsa_i31_pss_sign.o: cc src/drivers/net/bearssl/src/rsa/rsa_i31_pss_sign.c
+build build/bearssl/rsa_rsa_i31_pss_vrfy.o: cc src/drivers/net/bearssl/src/rsa/rsa_i31_pss_vrfy.c
+build build/bearssl/rsa_rsa_i31_pub.o: cc src/drivers/net/bearssl/src/rsa/rsa_i31_pub.c
+build build/bearssl/rsa_rsa_i31_pubexp.o: cc src/drivers/net/bearssl/src/rsa/rsa_i31_pubexp.c
+build build/bearssl/rsa_rsa_i32_oaep_decrypt.o: cc src/drivers/net/bearssl/src/rsa/rsa_i32_oaep_decrypt.c
+build build/bearssl/rsa_rsa_i32_oaep_encrypt.o: cc src/drivers/net/bearssl/src/rsa/rsa_i32_oaep_encrypt.c
+build build/bearssl/rsa_rsa_i32_pkcs1_sign.o: cc src/drivers/net/bearssl/src/rsa/rsa_i32_pkcs1_sign.c
+build build/bearssl/rsa_rsa_i32_pkcs1_vrfy.o: cc src/drivers/net/bearssl/src/rsa/rsa_i32_pkcs1_vrfy.c
+build build/bearssl/rsa_rsa_i32_priv.o: cc src/drivers/net/bearssl/src/rsa/rsa_i32_priv.c
+build build/bearssl/rsa_rsa_i32_pss_sign.o: cc src/drivers/net/bearssl/src/rsa/rsa_i32_pss_sign.c
+build build/bearssl/rsa_rsa_i32_pss_vrfy.o: cc src/drivers/net/bearssl/src/rsa/rsa_i32_pss_vrfy.c
+build build/bearssl/rsa_rsa_i32_pub.o: cc src/drivers/net/bearssl/src/rsa/rsa_i32_pub.c
+build build/bearssl/rsa_rsa_i62_keygen.o: cc src/drivers/net/bearssl/src/rsa/rsa_i62_keygen.c
+build build/bearssl/rsa_rsa_i62_oaep_decrypt.o: cc src/drivers/net/bearssl/src/rsa/rsa_i62_oaep_decrypt.c
+build build/bearssl/rsa_rsa_i62_oaep_encrypt.o: cc src/drivers/net/bearssl/src/rsa/rsa_i62_oaep_encrypt.c
+build build/bearssl/rsa_rsa_i62_pkcs1_sign.o: cc src/drivers/net/bearssl/src/rsa/rsa_i62_pkcs1_sign.c
+build build/bearssl/rsa_rsa_i62_pkcs1_vrfy.o: cc src/drivers/net/bearssl/src/rsa/rsa_i62_pkcs1_vrfy.c
+build build/bearssl/rsa_rsa_i62_priv.o: cc src/drivers/net/bearssl/src/rsa/rsa_i62_priv.c
+build build/bearssl/rsa_rsa_i62_pss_sign.o: cc src/drivers/net/bearssl/src/rsa/rsa_i62_pss_sign.c
+build build/bearssl/rsa_rsa_i62_pss_vrfy.o: cc src/drivers/net/bearssl/src/rsa/rsa_i62_pss_vrfy.c
+build build/bearssl/rsa_rsa_i62_pub.o: cc src/drivers/net/bearssl/src/rsa/rsa_i62_pub.c
+build build/bearssl/rsa_rsa_oaep_pad.o: cc src/drivers/net/bearssl/src/rsa/rsa_oaep_pad.c
+build build/bearssl/rsa_rsa_oaep_unpad.o: cc src/drivers/net/bearssl/src/rsa/rsa_oaep_unpad.c
+build build/bearssl/rsa_rsa_pkcs1_sig_pad.o: cc src/drivers/net/bearssl/src/rsa/rsa_pkcs1_sig_pad.c
+build build/bearssl/rsa_rsa_pkcs1_sig_unpad.o: cc src/drivers/net/bearssl/src/rsa/rsa_pkcs1_sig_unpad.c
+build build/bearssl/rsa_rsa_pss_sig_pad.o: cc src/drivers/net/bearssl/src/rsa/rsa_pss_sig_pad.c
+build build/bearssl/rsa_rsa_pss_sig_unpad.o: cc src/drivers/net/bearssl/src/rsa/rsa_pss_sig_unpad.c
+build build/bearssl/rsa_rsa_ssl_decrypt.o: cc src/drivers/net/bearssl/src/rsa/rsa_ssl_decrypt.c
+build build/bearssl/ssl_prf.o: cc src/drivers/net/bearssl/src/ssl/prf.c
+build build/bearssl/ssl_prf_md5sha1.o: cc src/drivers/net/bearssl/src/ssl/prf_md5sha1.c
+build build/bearssl/ssl_prf_sha256.o: cc src/drivers/net/bearssl/src/ssl/prf_sha256.c
+build build/bearssl/ssl_prf_sha384.o: cc src/drivers/net/bearssl/src/ssl/prf_sha384.c
+build build/bearssl/ssl_ssl_ccert_single_ec.o: cc src/drivers/net/bearssl/src/ssl/ssl_ccert_single_ec.c
+build build/bearssl/ssl_ssl_ccert_single_rsa.o: cc src/drivers/net/bearssl/src/ssl/ssl_ccert_single_rsa.c
+build build/bearssl/ssl_ssl_client.o: cc src/drivers/net/bearssl/src/ssl/ssl_client.c
+build build/bearssl/ssl_ssl_client_default_rsapub.o: cc src/drivers/net/bearssl/src/ssl/ssl_client_default_rsapub.c
+build build/bearssl/ssl_ssl_client_full.o: cc src/drivers/net/bearssl/src/ssl/ssl_client_full.c
+build build/bearssl/ssl_ssl_engine.o: cc src/drivers/net/bearssl/src/ssl/ssl_engine.c
+build build/bearssl/ssl_ssl_engine_default_aescbc.o: cc src/drivers/net/bearssl/src/ssl/ssl_engine_default_aescbc.c
+build build/bearssl/ssl_ssl_engine_default_aesccm.o: cc src/drivers/net/bearssl/src/ssl/ssl_engine_default_aesccm.c
+build build/bearssl/ssl_ssl_engine_default_aesgcm.o: cc src/drivers/net/bearssl/src/ssl/ssl_engine_default_aesgcm.c
+build build/bearssl/ssl_ssl_engine_default_chapol.o: cc src/drivers/net/bearssl/src/ssl/ssl_engine_default_chapol.c
+build build/bearssl/ssl_ssl_engine_default_descbc.o: cc src/drivers/net/bearssl/src/ssl/ssl_engine_default_descbc.c
+build build/bearssl/ssl_ssl_engine_default_ec.o: cc src/drivers/net/bearssl/src/ssl/ssl_engine_default_ec.c
+build build/bearssl/ssl_ssl_engine_default_ecdsa.o: cc src/drivers/net/bearssl/src/ssl/ssl_engine_default_ecdsa.c
+build build/bearssl/ssl_ssl_engine_default_rsavrfy.o: cc src/drivers/net/bearssl/src/ssl/ssl_engine_default_rsavrfy.c
+build build/bearssl/ssl_ssl_hashes.o: cc src/drivers/net/bearssl/src/ssl/ssl_hashes.c
+build build/bearssl/ssl_ssl_hs_client.o: cc src/drivers/net/bearssl/src/ssl/ssl_hs_client.c
+build build/bearssl/ssl_ssl_hs_server.o: cc src/drivers/net/bearssl/src/ssl/ssl_hs_server.c
+build build/bearssl/ssl_ssl_io.o: cc src/drivers/net/bearssl/src/ssl/ssl_io.c
+build build/bearssl/ssl_ssl_keyexport.o: cc src/drivers/net/bearssl/src/ssl/ssl_keyexport.c
+build build/bearssl/ssl_ssl_lru.o: cc src/drivers/net/bearssl/src/ssl/ssl_lru.c
+build build/bearssl/ssl_ssl_rec_cbc.o: cc src/drivers/net/bearssl/src/ssl/ssl_rec_cbc.c
+build build/bearssl/ssl_ssl_rec_ccm.o: cc src/drivers/net/bearssl/src/ssl/ssl_rec_ccm.c
+build build/bearssl/ssl_ssl_rec_chapol.o: cc src/drivers/net/bearssl/src/ssl/ssl_rec_chapol.c
+build build/bearssl/ssl_ssl_rec_gcm.o: cc src/drivers/net/bearssl/src/ssl/ssl_rec_gcm.c
+build build/bearssl/ssl_ssl_scert_single_ec.o: cc src/drivers/net/bearssl/src/ssl/ssl_scert_single_ec.c
+build build/bearssl/ssl_ssl_scert_single_rsa.o: cc src/drivers/net/bearssl/src/ssl/ssl_scert_single_rsa.c
+build build/bearssl/ssl_ssl_server.o: cc src/drivers/net/bearssl/src/ssl/ssl_server.c
+build build/bearssl/ssl_ssl_server_full_ec.o: cc src/drivers/net/bearssl/src/ssl/ssl_server_full_ec.c
+build build/bearssl/ssl_ssl_server_full_rsa.o: cc src/drivers/net/bearssl/src/ssl/ssl_server_full_rsa.c
+build build/bearssl/ssl_ssl_server_mine2c.o: cc src/drivers/net/bearssl/src/ssl/ssl_server_mine2c.c
+build build/bearssl/ssl_ssl_server_mine2g.o: cc src/drivers/net/bearssl/src/ssl/ssl_server_mine2g.c
+build build/bearssl/ssl_ssl_server_minf2c.o: cc src/drivers/net/bearssl/src/ssl/ssl_server_minf2c.c
+build build/bearssl/ssl_ssl_server_minf2g.o: cc src/drivers/net/bearssl/src/ssl/ssl_server_minf2g.c
+build build/bearssl/ssl_ssl_server_minr2g.o: cc src/drivers/net/bearssl/src/ssl/ssl_server_minr2g.c
+build build/bearssl/ssl_ssl_server_minu2g.o: cc src/drivers/net/bearssl/src/ssl/ssl_server_minu2g.c
+build build/bearssl/ssl_ssl_server_minv2g.o: cc src/drivers/net/bearssl/src/ssl/ssl_server_minv2g.c
+build build/bearssl/symcipher_aes_big_cbcdec.o: cc src/drivers/net/bearssl/src/symcipher/aes_big_cbcdec.c
+build build/bearssl/symcipher_aes_big_cbcenc.o: cc src/drivers/net/bearssl/src/symcipher/aes_big_cbcenc.c
+build build/bearssl/symcipher_aes_big_ctr.o: cc src/drivers/net/bearssl/src/symcipher/aes_big_ctr.c
+build build/bearssl/symcipher_aes_big_ctrcbc.o: cc src/drivers/net/bearssl/src/symcipher/aes_big_ctrcbc.c
+build build/bearssl/symcipher_aes_big_dec.o: cc src/drivers/net/bearssl/src/symcipher/aes_big_dec.c
+build build/bearssl/symcipher_aes_big_enc.o: cc src/drivers/net/bearssl/src/symcipher/aes_big_enc.c
+build build/bearssl/symcipher_aes_common.o: cc src/drivers/net/bearssl/src/symcipher/aes_common.c
+build build/bearssl/symcipher_aes_ct.o: cc src/drivers/net/bearssl/src/symcipher/aes_ct.c
+build build/bearssl/symcipher_aes_ct64.o: cc src/drivers/net/bearssl/src/symcipher/aes_ct64.c
+build build/bearssl/symcipher_aes_ct64_cbcdec.o: cc src/drivers/net/bearssl/src/symcipher/aes_ct64_cbcdec.c
+build build/bearssl/symcipher_aes_ct64_cbcenc.o: cc src/drivers/net/bearssl/src/symcipher/aes_ct64_cbcenc.c
+build build/bearssl/symcipher_aes_ct64_ctr.o: cc src/drivers/net/bearssl/src/symcipher/aes_ct64_ctr.c
+build build/bearssl/symcipher_aes_ct64_ctrcbc.o: cc src/drivers/net/bearssl/src/symcipher/aes_ct64_ctrcbc.c
+build build/bearssl/symcipher_aes_ct64_dec.o: cc src/drivers/net/bearssl/src/symcipher/aes_ct64_dec.c
+build build/bearssl/symcipher_aes_ct64_enc.o: cc src/drivers/net/bearssl/src/symcipher/aes_ct64_enc.c
+build build/bearssl/symcipher_aes_ct_cbcdec.o: cc src/drivers/net/bearssl/src/symcipher/aes_ct_cbcdec.c
+build build/bearssl/symcipher_aes_ct_cbcenc.o: cc src/drivers/net/bearssl/src/symcipher/aes_ct_cbcenc.c
+build build/bearssl/symcipher_aes_ct_ctr.o: cc src/drivers/net/bearssl/src/symcipher/aes_ct_ctr.c
+build build/bearssl/symcipher_aes_ct_ctrcbc.o: cc src/drivers/net/bearssl/src/symcipher/aes_ct_ctrcbc.c
+build build/bearssl/symcipher_aes_ct_dec.o: cc src/drivers/net/bearssl/src/symcipher/aes_ct_dec.c
+build build/bearssl/symcipher_aes_ct_enc.o: cc src/drivers/net/bearssl/src/symcipher/aes_ct_enc.c
+build build/bearssl/symcipher_aes_pwr8.o: cc src/drivers/net/bearssl/src/symcipher/aes_pwr8.c
+build build/bearssl/symcipher_aes_pwr8_cbcdec.o: cc src/drivers/net/bearssl/src/symcipher/aes_pwr8_cbcdec.c
+build build/bearssl/symcipher_aes_pwr8_cbcenc.o: cc src/drivers/net/bearssl/src/symcipher/aes_pwr8_cbcenc.c
+build build/bearssl/symcipher_aes_pwr8_ctr.o: cc src/drivers/net/bearssl/src/symcipher/aes_pwr8_ctr.c
+build build/bearssl/symcipher_aes_pwr8_ctrcbc.o: cc src/drivers/net/bearssl/src/symcipher/aes_pwr8_ctrcbc.c
+build build/bearssl/symcipher_aes_small_cbcdec.o: cc src/drivers/net/bearssl/src/symcipher/aes_small_cbcdec.c
+build build/bearssl/symcipher_aes_small_cbcenc.o: cc src/drivers/net/bearssl/src/symcipher/aes_small_cbcenc.c
+build build/bearssl/symcipher_aes_small_ctr.o: cc src/drivers/net/bearssl/src/symcipher/aes_small_ctr.c
+build build/bearssl/symcipher_aes_small_ctrcbc.o: cc src/drivers/net/bearssl/src/symcipher/aes_small_ctrcbc.c
+build build/bearssl/symcipher_aes_small_dec.o: cc src/drivers/net/bearssl/src/symcipher/aes_small_dec.c
+build build/bearssl/symcipher_aes_small_enc.o: cc src/drivers/net/bearssl/src/symcipher/aes_small_enc.c
+build build/bearssl/symcipher_chacha20_ct.o: cc src/drivers/net/bearssl/src/symcipher/chacha20_ct.c
+build build/bearssl/symcipher_des_ct.o: cc src/drivers/net/bearssl/src/symcipher/des_ct.c
+build build/bearssl/symcipher_des_ct_cbcdec.o: cc src/drivers/net/bearssl/src/symcipher/des_ct_cbcdec.c
+build build/bearssl/symcipher_des_ct_cbcenc.o: cc src/drivers/net/bearssl/src/symcipher/des_ct_cbcenc.c
+build build/bearssl/symcipher_des_support.o: cc src/drivers/net/bearssl/src/symcipher/des_support.c
+build build/bearssl/symcipher_des_tab.o: cc src/drivers/net/bearssl/src/symcipher/des_tab.c
+build build/bearssl/symcipher_des_tab_cbcdec.o: cc src/drivers/net/bearssl/src/symcipher/des_tab_cbcdec.c
+build build/bearssl/symcipher_des_tab_cbcenc.o: cc src/drivers/net/bearssl/src/symcipher/des_tab_cbcenc.c
+build build/bearssl/symcipher_poly1305_ctmul.o: cc src/drivers/net/bearssl/src/symcipher/poly1305_ctmul.c
+build build/bearssl/symcipher_poly1305_ctmul32.o: cc src/drivers/net/bearssl/src/symcipher/poly1305_ctmul32.c
+build build/bearssl/symcipher_poly1305_ctmulq.o: cc src/drivers/net/bearssl/src/symcipher/poly1305_ctmulq.c
+build build/bearssl/symcipher_poly1305_i15.o: cc src/drivers/net/bearssl/src/symcipher/poly1305_i15.c
+build build/bearssl/x509_asn1enc.o: cc src/drivers/net/bearssl/src/x509/asn1enc.c
+build build/bearssl/x509_encode_ec_pk8der.o: cc src/drivers/net/bearssl/src/x509/encode_ec_pk8der.c
+build build/bearssl/x509_encode_ec_rawder.o: cc src/drivers/net/bearssl/src/x509/encode_ec_rawder.c
+build build/bearssl/x509_encode_rsa_pk8der.o: cc src/drivers/net/bearssl/src/x509/encode_rsa_pk8der.c
+build build/bearssl/x509_encode_rsa_rawder.o: cc src/drivers/net/bearssl/src/x509/encode_rsa_rawder.c
+build build/bearssl/x509_skey_decoder.o: cc src/drivers/net/bearssl/src/x509/skey_decoder.c
+build build/bearssl/x509_x509_decoder.o: cc src/drivers/net/bearssl/src/x509/x509_decoder.c
+build build/bearssl/x509_x509_knownkey.o: cc src/drivers/net/bearssl/src/x509/x509_knownkey.c
+build build/bearssl/x509_x509_minimal.o: cc src/drivers/net/bearssl/src/x509/x509_minimal.c
+build build/bearssl/x509_x509_minimal_full.o: cc src/drivers/net/bearssl/src/x509/x509_minimal_full.c
+
+build build/libbearssl.a: ar build/bearssl/settings.o build/bearssl/aead_ccm.o build/bearssl/aead_eax.o build/bearssl/aead_gcm.o build/bearssl/codec_ccopy.o build/bearssl/codec_dec16be.o build/bearssl/codec_dec16le.o build/bearssl/codec_dec32be.o build/bearssl/codec_dec32le.o build/bearssl/codec_dec64be.o build/bearssl/codec_dec64le.o build/bearssl/codec_enc16be.o build/bearssl/codec_enc16le.o build/bearssl/codec_enc32be.o build/bearssl/codec_enc32le.o build/bearssl/codec_enc64be.o build/bearssl/codec_enc64le.o build/bearssl/codec_pemdec.o build/bearssl/codec_pemenc.o build/bearssl/ec_ec_all_m15.o build/bearssl/ec_ec_all_m31.o build/bearssl/ec_ec_c25519_i15.o build/bearssl/ec_ec_c25519_i31.o build/bearssl/ec_ec_c25519_m15.o build/bearssl/ec_ec_c25519_m31.o build/bearssl/ec_ec_c25519_m62.o build/bearssl/ec_ec_c25519_m64.o build/bearssl/ec_ec_curve25519.o build/bearssl/ec_ec_default.o build/bearssl/ec_ec_keygen.o build/bearssl/ec_ec_p256_m15.o build/bearssl/ec_ec_p256_m31.o build/bearssl/ec_ec_p256_m62.o build/bearssl/ec_ec_p256_m64.o build/bearssl/ec_ec_prime_i15.o build/bearssl/ec_ec_prime_i31.o build/bearssl/ec_ec_pubkey.o build/bearssl/ec_ec_secp256r1.o build/bearssl/ec_ec_secp384r1.o build/bearssl/ec_ec_secp521r1.o build/bearssl/ec_ecdsa_atr.o build/bearssl/ec_ecdsa_default_sign_asn1.o build/bearssl/ec_ecdsa_default_sign_raw.o build/bearssl/ec_ecdsa_default_vrfy_asn1.o build/bearssl/ec_ecdsa_default_vrfy_raw.o build/bearssl/ec_ecdsa_i15_bits.o build/bearssl/ec_ecdsa_i15_sign_asn1.o build/bearssl/ec_ecdsa_i15_sign_raw.o build/bearssl/ec_ecdsa_i15_vrfy_asn1.o build/bearssl/ec_ecdsa_i15_vrfy_raw.o build/bearssl/ec_ecdsa_i31_bits.o build/bearssl/ec_ecdsa_i31_sign_asn1.o build/bearssl/ec_ecdsa_i31_sign_raw.o build/bearssl/ec_ecdsa_i31_vrfy_asn1.o build/bearssl/ec_ecdsa_i31_vrfy_raw.o build/bearssl/ec_ecdsa_rta.o build/bearssl/hash_dig_oid.o build/bearssl/hash_dig_size.o build/bearssl/hash_ghash_ctmul.o build/bearssl/hash_ghash_ctmul32.o build/bearssl/hash_ghash_ctmul64.o build/bearssl/hash_ghash_pwr8.o build/bearssl/hash_md5.o build/bearssl/hash_md5sha1.o build/bearssl/hash_mgf1.o build/bearssl/hash_multihash.o build/bearssl/hash_sha1.o build/bearssl/hash_sha2big.o build/bearssl/hash_sha2small.o build/bearssl/int_i15_add.o build/bearssl/int_i15_bitlen.o build/bearssl/int_i15_decmod.o build/bearssl/int_i15_decode.o build/bearssl/int_i15_decred.o build/bearssl/int_i15_encode.o build/bearssl/int_i15_fmont.o build/bearssl/int_i15_iszero.o build/bearssl/int_i15_moddiv.o build/bearssl/int_i15_modpow.o build/bearssl/int_i15_modpow2.o build/bearssl/int_i15_montmul.o build/bearssl/int_i15_mulacc.o build/bearssl/int_i15_muladd.o build/bearssl/int_i15_ninv15.o build/bearssl/int_i15_reduce.o build/bearssl/int_i15_rshift.o build/bearssl/int_i15_sub.o build/bearssl/int_i15_tmont.o build/bearssl/int_i31_add.o build/bearssl/int_i31_bitlen.o build/bearssl/int_i31_decmod.o build/bearssl/int_i31_decode.o build/bearssl/int_i31_decred.o build/bearssl/int_i31_encode.o build/bearssl/int_i31_fmont.o build/bearssl/int_i31_iszero.o build/bearssl/int_i31_moddiv.o build/bearssl/int_i31_modpow.o build/bearssl/int_i31_modpow2.o build/bearssl/int_i31_montmul.o build/bearssl/int_i31_mulacc.o build/bearssl/int_i31_muladd.o build/bearssl/int_i31_ninv31.o build/bearssl/int_i31_reduce.o build/bearssl/int_i31_rshift.o build/bearssl/int_i31_sub.o build/bearssl/int_i31_tmont.o build/bearssl/int_i32_add.o build/bearssl/int_i32_bitlen.o build/bearssl/int_i32_decmod.o build/bearssl/int_i32_decode.o build/bearssl/int_i32_decred.o build/bearssl/int_i32_div32.o build/bearssl/int_i32_encode.o build/bearssl/int_i32_fmont.o build/bearssl/int_i32_iszero.o build/bearssl/int_i32_modpow.o build/bearssl/int_i32_montmul.o build/bearssl/int_i32_mulacc.o build/bearssl/int_i32_muladd.o build/bearssl/int_i32_ninv32.o build/bearssl/int_i32_reduce.o build/bearssl/int_i32_sub.o build/bearssl/int_i32_tmont.o build/bearssl/int_i62_modpow2.o build/bearssl/kdf_hkdf.o build/bearssl/kdf_shake.o build/bearssl/mac_hmac.o build/bearssl/mac_hmac_ct.o build/bearssl/rand_aesctr_drbg.o build/bearssl/rand_hmac_drbg.o build/bearssl/rsa_rsa_default_keygen.o build/bearssl/rsa_rsa_default_modulus.o build/bearssl/rsa_rsa_default_oaep_decrypt.o build/bearssl/rsa_rsa_default_oaep_encrypt.o build/bearssl/rsa_rsa_default_pkcs1_sign.o build/bearssl/rsa_rsa_default_pkcs1_vrfy.o build/bearssl/rsa_rsa_default_priv.o build/bearssl/rsa_rsa_default_privexp.o build/bearssl/rsa_rsa_default_pss_sign.o build/bearssl/rsa_rsa_default_pss_vrfy.o build/bearssl/rsa_rsa_default_pub.o build/bearssl/rsa_rsa_default_pubexp.o build/bearssl/rsa_rsa_i15_keygen.o build/bearssl/rsa_rsa_i15_modulus.o build/bearssl/rsa_rsa_i15_oaep_decrypt.o build/bearssl/rsa_rsa_i15_oaep_encrypt.o build/bearssl/rsa_rsa_i15_pkcs1_sign.o build/bearssl/rsa_rsa_i15_pkcs1_vrfy.o build/bearssl/rsa_rsa_i15_priv.o build/bearssl/rsa_rsa_i15_privexp.o build/bearssl/rsa_rsa_i15_pss_sign.o build/bearssl/rsa_rsa_i15_pss_vrfy.o build/bearssl/rsa_rsa_i15_pub.o build/bearssl/rsa_rsa_i15_pubexp.o build/bearssl/rsa_rsa_i31_keygen.o build/bearssl/rsa_rsa_i31_keygen_inner.o build/bearssl/rsa_rsa_i31_modulus.o build/bearssl/rsa_rsa_i31_oaep_decrypt.o build/bearssl/rsa_rsa_i31_oaep_encrypt.o build/bearssl/rsa_rsa_i31_pkcs1_sign.o build/bearssl/rsa_rsa_i31_pkcs1_vrfy.o build/bearssl/rsa_rsa_i31_priv.o build/bearssl/rsa_rsa_i31_privexp.o build/bearssl/rsa_rsa_i31_pss_sign.o build/bearssl/rsa_rsa_i31_pss_vrfy.o build/bearssl/rsa_rsa_i31_pub.o build/bearssl/rsa_rsa_i31_pubexp.o build/bearssl/rsa_rsa_i32_oaep_decrypt.o build/bearssl/rsa_rsa_i32_oaep_encrypt.o build/bearssl/rsa_rsa_i32_pkcs1_sign.o build/bearssl/rsa_rsa_i32_pkcs1_vrfy.o build/bearssl/rsa_rsa_i32_priv.o build/bearssl/rsa_rsa_i32_pss_sign.o build/bearssl/rsa_rsa_i32_pss_vrfy.o build/bearssl/rsa_rsa_i32_pub.o build/bearssl/rsa_rsa_i62_keygen.o build/bearssl/rsa_rsa_i62_oaep_decrypt.o build/bearssl/rsa_rsa_i62_oaep_encrypt.o build/bearssl/rsa_rsa_i62_pkcs1_sign.o build/bearssl/rsa_rsa_i62_pkcs1_vrfy.o build/bearssl/rsa_rsa_i62_priv.o build/bearssl/rsa_rsa_i62_pss_sign.o build/bearssl/rsa_rsa_i62_pss_vrfy.o build/bearssl/rsa_rsa_i62_pub.o build/bearssl/rsa_rsa_oaep_pad.o build/bearssl/rsa_rsa_oaep_unpad.o build/bearssl/rsa_rsa_pkcs1_sig_pad.o build/bearssl/rsa_rsa_pkcs1_sig_unpad.o build/bearssl/rsa_rsa_pss_sig_pad.o build/bearssl/rsa_rsa_pss_sig_unpad.o build/bearssl/rsa_rsa_ssl_decrypt.o build/bearssl/ssl_prf.o build/bearssl/ssl_prf_md5sha1.o build/bearssl/ssl_prf_sha256.o build/bearssl/ssl_prf_sha384.o build/bearssl/ssl_ssl_ccert_single_ec.o build/bearssl/ssl_ssl_ccert_single_rsa.o build/bearssl/ssl_ssl_client.o build/bearssl/ssl_ssl_client_default_rsapub.o build/bearssl/ssl_ssl_client_full.o build/bearssl/ssl_ssl_engine.o build/bearssl/ssl_ssl_engine_default_aescbc.o build/bearssl/ssl_ssl_engine_default_aesccm.o build/bearssl/ssl_ssl_engine_default_aesgcm.o build/bearssl/ssl_ssl_engine_default_chapol.o build/bearssl/ssl_ssl_engine_default_descbc.o build/bearssl/ssl_ssl_engine_default_ec.o build/bearssl/ssl_ssl_engine_default_ecdsa.o build/bearssl/ssl_ssl_engine_default_rsavrfy.o build/bearssl/ssl_ssl_hashes.o build/bearssl/ssl_ssl_hs_client.o build/bearssl/ssl_ssl_hs_server.o build/bearssl/ssl_ssl_io.o build/bearssl/ssl_ssl_keyexport.o build/bearssl/ssl_ssl_lru.o build/bearssl/ssl_ssl_rec_cbc.o build/bearssl/ssl_ssl_rec_ccm.o build/bearssl/ssl_ssl_rec_chapol.o build/bearssl/ssl_ssl_rec_gcm.o build/bearssl/ssl_ssl_scert_single_ec.o build/bearssl/ssl_ssl_scert_single_rsa.o build/bearssl/ssl_ssl_server.o build/bearssl/ssl_ssl_server_full_ec.o build/bearssl/ssl_ssl_server_full_rsa.o build/bearssl/ssl_ssl_server_mine2c.o build/bearssl/ssl_ssl_server_mine2g.o build/bearssl/ssl_ssl_server_minf2c.o build/bearssl/ssl_ssl_server_minf2g.o build/bearssl/ssl_ssl_server_minr2g.o build/bearssl/ssl_ssl_server_minu2g.o build/bearssl/ssl_ssl_server_minv2g.o build/bearssl/symcipher_aes_big_cbcdec.o build/bearssl/symcipher_aes_big_cbcenc.o build/bearssl/symcipher_aes_big_ctr.o build/bearssl/symcipher_aes_big_ctrcbc.o build/bearssl/symcipher_aes_big_dec.o build/bearssl/symcipher_aes_big_enc.o build/bearssl/symcipher_aes_common.o build/bearssl/symcipher_aes_ct.o build/bearssl/symcipher_aes_ct64.o build/bearssl/symcipher_aes_ct64_cbcdec.o build/bearssl/symcipher_aes_ct64_cbcenc.o build/bearssl/symcipher_aes_ct64_ctr.o build/bearssl/symcipher_aes_ct64_ctrcbc.o build/bearssl/symcipher_aes_ct64_dec.o build/bearssl/symcipher_aes_ct64_enc.o build/bearssl/symcipher_aes_ct_cbcdec.o build/bearssl/symcipher_aes_ct_cbcenc.o build/bearssl/symcipher_aes_ct_ctr.o build/bearssl/symcipher_aes_ct_ctrcbc.o build/bearssl/symcipher_aes_ct_dec.o build/bearssl/symcipher_aes_ct_enc.o build/bearssl/symcipher_aes_pwr8.o build/bearssl/symcipher_aes_pwr8_cbcdec.o build/bearssl/symcipher_aes_pwr8_cbcenc.o build/bearssl/symcipher_aes_pwr8_ctr.o build/bearssl/symcipher_aes_pwr8_ctrcbc.o build/bearssl/symcipher_aes_small_cbcdec.o build/bearssl/symcipher_aes_small_cbcenc.o build/bearssl/symcipher_aes_small_ctr.o build/bearssl/symcipher_aes_small_ctrcbc.o build/bearssl/symcipher_aes_small_dec.o build/bearssl/symcipher_aes_small_enc.o build/bearssl/symcipher_chacha20_ct.o build/bearssl/symcipher_des_ct.o build/bearssl/symcipher_des_ct_cbcdec.o build/bearssl/symcipher_des_ct_cbcenc.o build/bearssl/symcipher_des_support.o build/bearssl/symcipher_des_tab.o build/bearssl/symcipher_des_tab_cbcdec.o build/bearssl/symcipher_des_tab_cbcenc.o build/bearssl/symcipher_poly1305_ctmul.o build/bearssl/symcipher_poly1305_ctmul32.o build/bearssl/symcipher_poly1305_ctmulq.o build/bearssl/symcipher_poly1305_i15.o build/bearssl/x509_asn1enc.o build/bearssl/x509_encode_ec_pk8der.o build/bearssl/x509_encode_ec_rawder.o build/bearssl/x509_encode_rsa_pk8der.o build/bearssl/x509_encode_rsa_rawder.o build/bearssl/x509_skey_decoder.o build/bearssl/x509_x509_decoder.o build/bearssl/x509_x509_knownkey.o build/bearssl/x509_x509_minimal.o build/bearssl/x509_x509_minimal_full.o
+
+build build/kernel/kernel.o: cc kernel/kernel.c
+build build/kernel/gdt.o: cc kernel/gdt.c
+build build/kernel/syscall.o: cc kernel/syscall.c
+build build/kernel/memory.o: cc kernel/memory.c
+build build/kernel/process.o: cc kernel/process.c
+build build/kernel/elf.o: cc kernel/elf.c
+build build/kernel/uwindow.o: cc kernel/uwindow.c
+build build/kernel/vfs.o: cc kernel/vfs.c
+build build/kernel/graphics.o: cc kernel/include/graphics.c
+build build/kernel/idt.o: cc kernel/include/idt.c
+build build/kernel/pic.o: cc kernel/include/pic.c
+build build/kernel/panic.o: cc kernel/panic.c
+build build/kernel/timer.o: cc kernel/timer.c
+build build/boot/loading/load_logo.o: cc boot/loading/load_logo.c
+build build/src/desktop.o: cc src/desktop.c
+build build/src/drivers/system/keyboard.o: cc src/drivers/system/keyboard.c
+build build/src/drivers/system/mouse.o: cc src/drivers/system/mouse.c
+build build/src/drivers/system/ac97.o: cc src/drivers/system/ac97.c
+build build/src/drivers/system/hda.o: cc src/drivers/system/hda.c
+build build/src/drivers/system/sound_manager.o: cc src/drivers/system/sound_manager.c
+build build/src/drivers/system/ata.o: cc src/drivers/system/ata.c
+build build/src/drivers/system/fat32.o: cc src/drivers/system/fat32.c
+build build/src/drivers/system/iso9660.o: cc src/drivers/system/iso9660.c
+build build/src/drivers/pci/pci.o: cc src/drivers/pci/pci.c
+build build/src/drivers/usb/usb.o: cc src/drivers/usb/usb.c
+build build/src/drivers/net/netdev.o: cc src/drivers/net/netdev.c
+build build/src/drivers/net/e1000.o: cc src/drivers/net/e1000.c
+build build/src/drivers/net/rtl8139.o: cc src/drivers/net/rtl8139.c
+build build/src/drivers/net/virtio_net.o: cc src/drivers/net/virtio_net.c
+build build/src/drivers/net/net_stack.o: cc src/drivers/net/net_stack.c
+build build/src/drivers/net/tls/kesh_tls.o: cc src/drivers/net/tls/kesh_tls.c
+build build/kpm/kpm_os.o: cc kpm/kpm_os.c
+build build/src/gui/apps/file/file_manager.o: cc src/gui/apps/file/file_manager.c
+build build/src/gui/apps/music/music_app.o: cc src/gui/apps/music/music_app.c
+build build/src/gui/apps/about/about_app.o: cc src/gui/apps/about/about_app.c
+build build/src/gui/apps/calc/calc_logic.o: cc src/gui/apps/calc/calc_logic.c
+build build/src/gui/apps/calc/calc_app.o: cc src/gui/apps/calc/calc_app.c
+build build/src/gui/anim/genie_anim.o: cc src/gui/anim/genie_anim.c
+build build/src/gui/anim/win_chrome.o: cc src/gui/anim/win_chrome.c
+build build/src/gui/apps/terminal/terminal_app.o: cc src/gui/apps/terminal/terminal_app.c
+build build/src/gui/apps/settings/settings_app.o: cc src/gui/apps/settings/settings_app.c
+build build/src/gui/apps/doom/doom_app.o: cc src/gui/apps/doom/doom_app.c
+build build/src/gui/apps/doom/doomgeneric_igoros.o: cc src/gui/apps/doom/doomgeneric_igoros.c
+build build/src/gui/apps/doom/doom_fs_libc.o: cc src/gui/apps/doom/doom_fs_libc.c
+build build/src/gui/bmp_loader.o: cc src/gui/bmp_loader.c
+build build/src/gui/cursor/cursor.o: cc src/gui/cursor/cursor.c
+build build/src/gui/font.o: cc src/gui/font.c
+build build/src/graphics.o: cc src/graphics.c
+build build/src/gfx/gpu.o: cc src/gfx/gpu.c
+build build/src/gfx/kesh3d.o: cc src/gfx/kesh3d.c
+build build/src/web/web.o: cc src/web/web.c
+build build/src/gui/wm_config.o: cc src/gui/wm_config.c
+build build/src/gui/apps/doom/engine/am_map.o: cc src/gui/apps/doom/engine/am_map.c
+build build/src/gui/apps/doom/engine/d_event.o: cc src/gui/apps/doom/engine/d_event.c
+build build/src/gui/apps/doom/engine/d_items.o: cc src/gui/apps/doom/engine/d_items.c
+build build/src/gui/apps/doom/engine/d_iwad.o: cc src/gui/apps/doom/engine/d_iwad.c
+build build/src/gui/apps/doom/engine/d_loop.o: cc src/gui/apps/doom/engine/d_loop.c
+build build/src/gui/apps/doom/engine/d_main.o: cc src/gui/apps/doom/engine/d_main.c
+build build/src/gui/apps/doom/engine/d_mode.o: cc src/gui/apps/doom/engine/d_mode.c
+build build/src/gui/apps/doom/engine/d_net.o: cc src/gui/apps/doom/engine/d_net.c
+build build/src/gui/apps/doom/engine/doomdef.o: cc src/gui/apps/doom/engine/doomdef.c
+build build/src/gui/apps/doom/engine/doomgeneric.o: cc src/gui/apps/doom/engine/doomgeneric.c
+build build/src/gui/apps/doom/engine/doomstat.o: cc src/gui/apps/doom/engine/doomstat.c
+build build/src/gui/apps/doom/engine/dstrings.o: cc src/gui/apps/doom/engine/dstrings.c
+build build/src/gui/apps/doom/engine/dummy.o: cc src/gui/apps/doom/engine/dummy.c
+build build/src/gui/apps/doom/engine/f_finale.o: cc src/gui/apps/doom/engine/f_finale.c
+build build/src/gui/apps/doom/engine/f_wipe.o: cc src/gui/apps/doom/engine/f_wipe.c
+build build/src/gui/apps/doom/engine/g_game.o: cc src/gui/apps/doom/engine/g_game.c
+build build/src/gui/apps/doom/engine/hu_lib.o: cc src/gui/apps/doom/engine/hu_lib.c
+build build/src/gui/apps/doom/engine/hu_stuff.o: cc src/gui/apps/doom/engine/hu_stuff.c
+build build/src/gui/apps/doom/engine/i_cdmus.o: cc src/gui/apps/doom/engine/i_cdmus.c
+build build/src/gui/apps/doom/engine/i_endoom.o: cc src/gui/apps/doom/engine/i_endoom.c
+build build/src/gui/apps/doom/engine/i_input.o: cc src/gui/apps/doom/engine/i_input.c
+build build/src/gui/apps/doom/engine/i_joystick.o: cc src/gui/apps/doom/engine/i_joystick.c
+build build/src/gui/apps/doom/engine/i_scale.o: cc src/gui/apps/doom/engine/i_scale.c
+build build/src/gui/apps/doom/engine/i_sound.o: cc src/gui/apps/doom/engine/i_sound.c
+build build/src/gui/apps/doom/engine/i_system_fs.o: cc src/gui/apps/doom/engine/i_system_fs.c
+build build/src/gui/apps/doom/engine/i_timer.o: cc src/gui/apps/doom/engine/i_timer.c
+build build/src/gui/apps/doom/engine/i_video.o: cc src/gui/apps/doom/engine/i_video.c
+build build/src/gui/apps/doom/engine/info.o: cc src/gui/apps/doom/engine/info.c
+build build/src/gui/apps/doom/engine/m_argv.o: cc src/gui/apps/doom/engine/m_argv.c
+build build/src/gui/apps/doom/engine/m_bbox.o: cc src/gui/apps/doom/engine/m_bbox.c
+build build/src/gui/apps/doom/engine/m_cheat.o: cc src/gui/apps/doom/engine/m_cheat.c
+build build/src/gui/apps/doom/engine/m_config.o: cc src/gui/apps/doom/engine/m_config.c
+build build/src/gui/apps/doom/engine/m_controls.o: cc src/gui/apps/doom/engine/m_controls.c
+build build/src/gui/apps/doom/engine/m_fixed.o: cc src/gui/apps/doom/engine/m_fixed.c
+build build/src/gui/apps/doom/engine/m_menu.o: cc src/gui/apps/doom/engine/m_menu.c
+build build/src/gui/apps/doom/engine/m_misc.o: cc src/gui/apps/doom/engine/m_misc.c
+build build/src/gui/apps/doom/engine/m_random.o: cc src/gui/apps/doom/engine/m_random.c
+build build/src/gui/apps/doom/engine/memio.o: cc src/gui/apps/doom/engine/memio.c
+build build/src/gui/apps/doom/engine/p_ceilng.o: cc src/gui/apps/doom/engine/p_ceilng.c
+build build/src/gui/apps/doom/engine/p_doors.o: cc src/gui/apps/doom/engine/p_doors.c
+build build/src/gui/apps/doom/engine/p_enemy.o: cc src/gui/apps/doom/engine/p_enemy.c
+build build/src/gui/apps/doom/engine/p_floor.o: cc src/gui/apps/doom/engine/p_floor.c
+build build/src/gui/apps/doom/engine/p_inter.o: cc src/gui/apps/doom/engine/p_inter.c
+build build/src/gui/apps/doom/engine/p_lights.o: cc src/gui/apps/doom/engine/p_lights.c
+build build/src/gui/apps/doom/engine/p_map.o: cc src/gui/apps/doom/engine/p_map.c
+build build/src/gui/apps/doom/engine/p_maputl.o: cc src/gui/apps/doom/engine/p_maputl.c
+build build/src/gui/apps/doom/engine/p_mobj.o: cc src/gui/apps/doom/engine/p_mobj.c
+build build/src/gui/apps/doom/engine/p_plats.o: cc src/gui/apps/doom/engine/p_plats.c
+build build/src/gui/apps/doom/engine/p_pspr.o: cc src/gui/apps/doom/engine/p_pspr.c
+build build/src/gui/apps/doom/engine/p_saveg.o: cc src/gui/apps/doom/engine/p_saveg.c
+build build/src/gui/apps/doom/engine/p_setup.o: cc src/gui/apps/doom/engine/p_setup.c
+build build/src/gui/apps/doom/engine/p_sight.o: cc src/gui/apps/doom/engine/p_sight.c
+build build/src/gui/apps/doom/engine/p_spec.o: cc src/gui/apps/doom/engine/p_spec.c
+build build/src/gui/apps/doom/engine/p_switch.o: cc src/gui/apps/doom/engine/p_switch.c
+build build/src/gui/apps/doom/engine/p_telept.o: cc src/gui/apps/doom/engine/p_telept.c
+build build/src/gui/apps/doom/engine/p_tick.o: cc src/gui/apps/doom/engine/p_tick.c
+build build/src/gui/apps/doom/engine/p_user.o: cc src/gui/apps/doom/engine/p_user.c
+build build/src/gui/apps/doom/engine/r_bsp.o: cc src/gui/apps/doom/engine/r_bsp.c
+build build/src/gui/apps/doom/engine/r_data.o: cc src/gui/apps/doom/engine/r_data.c
+build build/src/gui/apps/doom/engine/r_draw.o: cc src/gui/apps/doom/engine/r_draw.c
+build build/src/gui/apps/doom/engine/r_main.o: cc src/gui/apps/doom/engine/r_main.c
+build build/src/gui/apps/doom/engine/r_plane.o: cc src/gui/apps/doom/engine/r_plane.c
+build build/src/gui/apps/doom/engine/r_segs.o: cc src/gui/apps/doom/engine/r_segs.c
+build build/src/gui/apps/doom/engine/r_sky.o: cc src/gui/apps/doom/engine/r_sky.c
+build build/src/gui/apps/doom/engine/r_things.o: cc src/gui/apps/doom/engine/r_things.c
+build build/src/gui/apps/doom/engine/s_sound.o: cc src/gui/apps/doom/engine/s_sound.c
+build build/src/gui/apps/doom/engine/sha1.o: cc src/gui/apps/doom/engine/sha1.c
+build build/src/gui/apps/doom/engine/sounds.o: cc src/gui/apps/doom/engine/sounds.c
+build build/src/gui/apps/doom/engine/st_lib.o: cc src/gui/apps/doom/engine/st_lib.c
+build build/src/gui/apps/doom/engine/st_stuff.o: cc src/gui/apps/doom/engine/st_stuff.c
+build build/src/gui/apps/doom/engine/statdump.o: cc src/gui/apps/doom/engine/statdump.c
+build build/src/gui/apps/doom/engine/tables.o: cc src/gui/apps/doom/engine/tables.c
+build build/src/gui/apps/doom/engine/v_video.o: cc src/gui/apps/doom/engine/v_video.c
+build build/src/gui/apps/doom/engine/w_checksum.o: cc src/gui/apps/doom/engine/w_checksum.c
+build build/src/gui/apps/doom/engine/w_file.o: cc src/gui/apps/doom/engine/w_file.c
+build build/src/gui/apps/doom/engine/w_file_stdc.o: cc src/gui/apps/doom/engine/w_file_stdc.c
+build build/src/gui/apps/doom/engine/w_main.o: cc src/gui/apps/doom/engine/w_main.c
+build build/src/gui/apps/doom/engine/w_wad.o: cc src/gui/apps/doom/engine/w_wad.c
+build build/src/gui/apps/doom/engine/wi_stuff.o: cc src/gui/apps/doom/engine/wi_stuff.c
+build build/src/gui/apps/doom/engine/z_zone.o: cc src/gui/apps/doom/engine/z_zone.c
+build build/kernel/resources.o: kernel_asm kernel/resources.S | build/apps/notepad.kea build/apps/explorer.kea build/apps/taskmgr.kea build/apps/paint.kea build/apps/shell.kea build/apps/settings.kea build/apps/about.kea build/apps/browser.kea
+build build/kernel/isr_stubs.o: kernel_asm kernel/isr_stubs.S
+
+build build/kernel.elf: link build/kernel/kernel.o build/kernel/gdt.o build/kernel/syscall.o build/kernel/memory.o build/kernel/process.o build/kernel/elf.o build/kernel/uwindow.o build/kernel/vfs.o build/kernel/graphics.o build/kernel/idt.o build/kernel/pic.o build/kernel/panic.o build/kernel/timer.o build/boot/loading/load_logo.o build/src/desktop.o build/src/drivers/system/keyboard.o build/src/drivers/system/mouse.o build/src/drivers/system/ac97.o build/src/drivers/system/hda.o build/src/drivers/system/sound_manager.o build/src/drivers/system/ata.o build/src/drivers/system/fat32.o build/src/drivers/system/iso9660.o build/src/drivers/pci/pci.o build/src/drivers/usb/usb.o build/src/drivers/net/netdev.o build/src/drivers/net/e1000.o build/src/drivers/net/rtl8139.o build/src/drivers/net/virtio_net.o build/src/drivers/net/net_stack.o build/src/drivers/net/tls/kesh_tls.o build/kpm/kpm_os.o build/src/gui/apps/file/file_manager.o build/src/gui/apps/music/music_app.o build/src/gui/apps/about/about_app.o build/src/gui/apps/calc/calc_logic.o build/src/gui/apps/calc/calc_app.o build/src/gui/anim/genie_anim.o build/src/gui/anim/win_chrome.o build/src/gui/apps/terminal/terminal_app.o build/src/gui/apps/settings/settings_app.o build/src/gui/apps/doom/doom_app.o build/src/gui/apps/doom/doomgeneric_igoros.o build/src/gui/apps/doom/doom_fs_libc.o build/src/gui/bmp_loader.o build/src/gui/cursor/cursor.o build/src/gui/font.o build/src/graphics.o build/src/gfx/gpu.o build/src/gfx/kesh3d.o build/src/web/web.o build/src/gui/wm_config.o build/src/gui/apps/doom/engine/am_map.o build/src/gui/apps/doom/engine/d_event.o build/src/gui/apps/doom/engine/d_items.o build/src/gui/apps/doom/engine/d_iwad.o build/src/gui/apps/doom/engine/d_loop.o build/src/gui/apps/doom/engine/d_main.o build/src/gui/apps/doom/engine/d_mode.o build/src/gui/apps/doom/engine/d_net.o build/src/gui/apps/doom/engine/doomdef.o build/src/gui/apps/doom/engine/doomgeneric.o build/src/gui/apps/doom/engine/doomstat.o build/src/gui/apps/doom/engine/dstrings.o build/src/gui/apps/doom/engine/dummy.o build/src/gui/apps/doom/engine/f_finale.o build/src/gui/apps/doom/engine/f_wipe.o build/src/gui/apps/doom/engine/g_game.o build/src/gui/apps/doom/engine/hu_lib.o build/src/gui/apps/doom/engine/hu_stuff.o build/src/gui/apps/doom/engine/i_cdmus.o build/src/gui/apps/doom/engine/i_endoom.o build/src/gui/apps/doom/engine/i_input.o build/src/gui/apps/doom/engine/i_joystick.o build/src/gui/apps/doom/engine/i_scale.o build/src/gui/apps/doom/engine/i_sound.o build/src/gui/apps/doom/engine/i_system_fs.o build/src/gui/apps/doom/engine/i_timer.o build/src/gui/apps/doom/engine/i_video.o build/src/gui/apps/doom/engine/info.o build/src/gui/apps/doom/engine/m_argv.o build/src/gui/apps/doom/engine/m_bbox.o build/src/gui/apps/doom/engine/m_cheat.o build/src/gui/apps/doom/engine/m_config.o build/src/gui/apps/doom/engine/m_controls.o build/src/gui/apps/doom/engine/m_fixed.o build/src/gui/apps/doom/engine/m_menu.o build/src/gui/apps/doom/engine/m_misc.o build/src/gui/apps/doom/engine/m_random.o build/src/gui/apps/doom/engine/memio.o build/src/gui/apps/doom/engine/p_ceilng.o build/src/gui/apps/doom/engine/p_doors.o build/src/gui/apps/doom/engine/p_enemy.o build/src/gui/apps/doom/engine/p_floor.o build/src/gui/apps/doom/engine/p_inter.o build/src/gui/apps/doom/engine/p_lights.o build/src/gui/apps/doom/engine/p_map.o build/src/gui/apps/doom/engine/p_maputl.o build/src/gui/apps/doom/engine/p_mobj.o build/src/gui/apps/doom/engine/p_plats.o build/src/gui/apps/doom/engine/p_pspr.o build/src/gui/apps/doom/engine/p_saveg.o build/src/gui/apps/doom/engine/p_setup.o build/src/gui/apps/doom/engine/p_sight.o build/src/gui/apps/doom/engine/p_spec.o build/src/gui/apps/doom/engine/p_switch.o build/src/gui/apps/doom/engine/p_telept.o build/src/gui/apps/doom/engine/p_tick.o build/src/gui/apps/doom/engine/p_user.o build/src/gui/apps/doom/engine/r_bsp.o build/src/gui/apps/doom/engine/r_data.o build/src/gui/apps/doom/engine/r_draw.o build/src/gui/apps/doom/engine/r_main.o build/src/gui/apps/doom/engine/r_plane.o build/src/gui/apps/doom/engine/r_segs.o build/src/gui/apps/doom/engine/r_sky.o build/src/gui/apps/doom/engine/r_things.o build/src/gui/apps/doom/engine/s_sound.o build/src/gui/apps/doom/engine/sha1.o build/src/gui/apps/doom/engine/sounds.o build/src/gui/apps/doom/engine/st_lib.o build/src/gui/apps/doom/engine/st_stuff.o build/src/gui/apps/doom/engine/statdump.o build/src/gui/apps/doom/engine/tables.o build/src/gui/apps/doom/engine/v_video.o build/src/gui/apps/doom/engine/w_checksum.o build/src/gui/apps/doom/engine/w_file.o build/src/gui/apps/doom/engine/w_file_stdc.o build/src/gui/apps/doom/engine/w_main.o build/src/gui/apps/doom/engine/w_wad.o build/src/gui/apps/doom/engine/wi_stuff.o build/src/gui/apps/doom/engine/z_zone.o build/kernel/resources.o build/kernel/isr_stubs.o build/libbearssl.a
+default build/apps/notepad.kea build/apps/explorer.kea build/apps/taskmgr.kea build/apps/paint.kea build/apps/shell.kea build/apps/settings.kea build/apps/about.kea build/apps/browser.kea build/kernel.elf

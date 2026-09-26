@@ -1,0 +1,60 @@
+{
+  "name": "KeshOS Package Registry",
+  "version": "1.0.0",
+  "updated_at": "2026-09-24T18:35:00Z",
+  "repository": "https://keshos-kpm.vercel.app",
+  "packages": [
+    {
+      "id": "notepad",
+      "name": "Notepad",
+      "version": "1.0.0",
+      "filename": "notepad.kea",
+      "author": "KeshOS Team",
+      "category": "Utilities",
+      "description": "Native lightweight text editor for KeshOS with FAT32 support",
+      "size": 42664,
+      "checksum": "0x7297BCB5",
+      "permissions": ["gui", "fs"],
+      "download_url": "/packages/notepad.kea"
+    },
+    {
+      "id": "explorer",
+      "name": "Explorer",
+      "version": "1.0.0",
+      "filename": "explorer.kea",
+      "author": "KeshOS Team",
+      "category": "System",
+      "description": "Official file manager and directory browser for KeshOS",
+      "size": 47352,
+      "checksum": "0xEABADCAB",
+      "permissions": ["gui", "fs", "system"],
+      "download_url": "/packages/explorer.kea"
+    },
+    {
+      "id": "calc",
+      "name": "Calculator",
+      "version": "1.0.0",
+      "filename": "calc.kea",
+      "author": "KeshOS Team",
+      "category": "Utilities",
+      "description": "Standard arithmetic calculator with Big Sur aesthetics",
+      "size": 39800,
+      "checksum": "0x98A13B44",
+      "permissions": ["gui"],
+      "download_url": "/packages/calc.kea"
+    },
+    {
+      "id": "doom",
+      "name": "Doom Classic",
+      "version": "1.1.0",
+      "filename": "doom.kea",
+      "author": "id Software / KeshOS Port",
+      "category": "Games",
+      "description": "Classic 1993 Doom engine running bare-metal on KeshOS",
+      "size": 312500,
+      "checksum": "0x51E98BA0",
+      "permissions": ["gui", "sound", "fs"],
+      "download_url": "/packages/doom.kea"
+    }
+  ]
+}

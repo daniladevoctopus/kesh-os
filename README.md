@@ -1,93 +1,178 @@
-# KeshOS NT
+# KeshOS 1.0 "Drop"
+
+[![Architecture: x86_64](https://img.shields.io/badge/arch-x86__64-blue.svg)](#architecture)
+[![Boot: Limine](https://img.shields.io/badge/bootloader-Limine-brightgreen.svg)](https://github.com/limine-bootloader/limine)
+[![Kernel: C/ASM Ring 0](https://img.shields.io/badge/kernel-C%20%2F%20ASM%20(Ring%200)-orange.svg)](#architecture)
+[![Compositor: C++](https://img.shields.io/badge/compositor-KeshShell%20(C%2B%2B)-purple.svg)](#gui--windowing)
+[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/YgMe7ekA5y)
+[![Subreddit](https://img.shields.io/badge/Reddit-r%2Fsneakdeak-FF4500?logo=reddit&logoColor=white)](https://www.reddit.com/r/sneakdeak/)
+
+> **KeshOS** is an independent, lightweight 64-bit desktop operating system featuring the **KeshShell** composited desktop interface. Built from the ground up by the indie team **SneakDeak**.
 
 <p align="center">
-  <img alt="KeshOS Logo" src="website/public/images/keshos_logo.png" width="220" />
-</p>
-
-<p align="center">
-  <b>Современная независимая операционная система с архитектурой NT</b><br>
-  Разработка SneakDeak Technologies
-</p>
-
-<p align="center">
-  <img alt="Release" src="https://img.shields.io/badge/Current_Release-0.8.2_Beta_Brownie-c47d3d.svg?style=flat-square">
-  <img alt="Upcoming" src="https://img.shields.io/badge/Upcoming-0.9.5_RC_Donut-e07090.svg?style=flat-square">
-  <img alt="Platform" src="https://img.shields.io/badge/Platform-x86_%7C_amd64_UEFI-0055aa.svg?style=flat-square">
-  <img alt="License" src="https://img.shields.io/badge/License-GNU_GPL_2.0-228833.svg?style=flat-square">
+  <img src="docs/assets/keshos_desktop_showcase.png" alt="KeshOS Desktop Showcase" width="850">
 </p>
 
 ---
 
-## О проекте
+## 🎯 Target Hardware & Philosophy
 
-**KeshOS NT** — это открытая операционная система, базирующаяся на архитектуре NT 5.2 и обеспечивающая бинарную совместимость с приложениями и драйверами экосистемы Microsoft Windows (2000, XP, Server 2003).
+Modern desktop operating systems have left capable 2011–2016 x86_64 machines behind:
 
-Проект сочетает в себе надёжность легковесного микроядерного окружения, продуманную эстетику и глубокую аппаратную оптимизацию для запуска как на современных виртуальных машинах, так и на физических ПК и ноутбуках.
+* **Windows 10** reached official End-of-Life in October 2025.
+* **Windows 11** enforces strict hardware gates (Intel 8th Gen+ / AMD Zen+, TPM 2.0, 4 GB RAM minimum).
+* Modern Linux desktop environments (GNOME/KDE) with heavy background daemons and systemd often consume excessive memory on 2–4 GB systems.
 
-Официальный веб-сайт: [kesh.sneakdeak.net](https://kesh.sneakdeak.net)
-
----
-
-## Ключевые особенности
-
-### 1. Гибридный загрузчик и запуск на реальном железе
-* **Universal Hybrid BootCD:** Образ системы снабжён гибридной разметкой ISOHYBRID MBR и El Torito, что обеспечивает запуск через Ventoy, Rufus или прямую запись на USB-накопитель.
-* **Режим Live RAM Boot:** Возможность полноценного запуска операционной системы в оперативную память без установки на внутренние накопители.
-* **Адаптация ACPI и дисков:** Переработанная подсистема FreeLoader корректно определяет физические приводы и накопители на современных чипсетах.
-
-### 2. Фирменный стиль Brownie & OOBE
-* **Тема оформления Brownie:** Тёплая кофейно-шоколадная палитра, кастомные элементы управления, рамки окон и панель задач.
-* **Мастер первого запуска (OOBE):** Мультиязычный экран приветствия с облаком языков, выбором региональных настроек и фирменным аудиосопровождением.
-* **Звуковая схема KeshOS:** Аутентичный набор системных звуков запуска, уведомлений и системных событий.
-
-### 3. Графика и аппаратное ускорение
-* **Поддержка Write-Combining (USWC):** Ускоренная пакетная передача кадрового буфера по шине PCIe в базовом видеодрайвере.
-* **Стабильный программный курсор:** Исключены конфликты перерисовки окон при движении мыши на базовых видеоадаптерах VBE.
-* **Курс на UEFI 64-bit:** Подготовка чистой архитектуры запуска через UEFI GOP с нативным разрешением дисплея.
+**KeshOS** aims to provide a fast, visually fluid desktop environment for these aging 64-bit rigs, targeting **~150 MB idle memory** without bloated background services or telemetry.
 
 ---
 
-## Текущий статус и планы развития
+## 🛠 Architecture & Technical Stack
 
-| Версия | Кодовое имя | Статус | Основные особенности |
-| :--- | :--- | :--- | :--- |
-| **0.8.2** | `Brownie` | **Текущая версия** | Подтверждённый запуск на реальном железе, тема Brownie, OOBE, гибридный ISO. |
-| **0.9.5** | `Donut` | **Release Candidate** | Автоопределение разрешения экрана (EDID), корректный ACPI PowerOff/Reboot, звук HDA. |
-| **1.0.0** | `Final` | **В планах** | Глобальный редизайн в стиле Material You, переход на 64-битный UEFI, сетевой стек. |
+```text
++-------------------------------------------------------+
+|  Ring 3 (Userland)                                    |
+|   - KeshShell (C++ Client-Server Window Compositor)   |
+|   - Native Apps: Paint, Explorer, Task Manager, Shell |
+|   - Native .kea binaries linked against /system/lib   |
++-------------------------------------------------------+
+|  (System Calls: Fast SYSCALL/SYSRETQ & Kernel IPC)    |
++-------------------------------------------------------+
+|  Ring 0 (Monolithic Kernel)                           |
+|   - 4-Level Paging (PML4) Address Space Isolation    |
+|   - In-kernel Network Stack (ARP, ICMP, DNS Resolver)|
+|   - Clean Unix-like VFS (/, /apps, /system, /hdd)    |
+|   - Storage Drivers: IDE ATA, ATAPI CD-ROM, FAT32    |
++-------------------------------------------------------+
+|  (Limine Boot Protocol)                               |
++-------------------------------------------------------+
+|  Hardware & Firmware: x86_64 UEFI (GOP) & Legacy BIOS |
++-------------------------------------------------------+
+```
 
-Подробный план следующего релиза доступен в файле [ROADMAP_0.9.5_DONUT.md](ROADMAP_0.9.5_DONUT.md).
+### 1. Boot Subsystem
+* Bootstrapped via the **Limine Bootloader**, supporting both modern UEFI/GPT and legacy BIOS configurations.
+* High-resolution linear framebuffer initialization via UEFI GOP with fallback modes.
+
+### 2. Kernel & Memory Management
+* **Monolithic architecture** implemented in raw C and x86_64 Assembly.
+* Memory management using **4-level paging (PML4)**, providing separate virtual address spaces for kernel and userland processes.
+* **Hardware-enforced Ring 3 isolation:** Faults and segmentation crashes in user applications are trapped by kernel interrupt handlers (`#GP`, `#PF`, `#UD`) without compromising the compositor or the OS session.
+
+### 3. GUI & Compositing (KeshShell)
+* Custom client-server window compositor written in modern C++.
+* Applications render to isolated shared offscreen surface buffers (`0x50000000`).
+* The compositor performs z-ordering, window decorations ("traffic light" controls, modern composited styling), and blits dirty rectangles to a double-buffered linear framebuffer.
+* Asynchronous input routing (mouse & keyboard) dispatched via kernel syscall event queue (`SYS_POLL_EVENT`).
+
+<p align="center">
+  <img src="docs/assets/kesh_paint_ring3.png" alt="Kesh Paint running in isolated Ring 3" width="750">
+</p>
+
+### 4. Networking Stack
+* In-kernel bare-metal networking stack with Intel **e1000** Gigabit Ethernet support:
+  * Ethernet frame processing and dynamic ARP cache resolution.
+  * ICMP engine supporting network diagnostics (`ping`).
+  * Direct DNS resolver for domain lookups over UDP sockets.
+  * Lightweight TLS capabilities via embedded BearSSL.
+
+### 5. Application Packaging & File System
+* **`.kea` Packages:** Native userland package format built on top of the ELF64 standard with structured metadata headers, dynamically linked with system runtimes (`/system/lib/ksh64`).
+* **Unix-like VFS:** Clean tree structure (`/`, `/apps`, `/system`, `/hdd`, `/cdrom`) with support for FAT32 and ISO 9660 filesystems.
+* **Dolphin-inspired File Manager:** Modern C++ file manager with breadcrumb navigation, grid/list view modes, and direct storage inspection.
+
+<p align="center">
+  <img src="docs/assets/kesh_explorer_showcase.png" alt="KeshOS Explorer Showcase" width="750">
+</p>
 
 ---
 
-## Сборка из исходного кода
+## 🔍 Development Transparency & Methodology
 
-### Требования
-* Среда сборки **ReactOS Build Environment (RosBE)** версии 2.2.0 или новее.
-* Генератор сборки **Ninja**.
-* CMake 3.19 или выше.
-
-### Инструкция по сборке
-
-1. Откройте консоль RosBE и перейдите в корень репозитория:
-   ```cmd
-   cd /d C:\path\to\kesh-os
-   ```
-
-2. Сконфигурируйте проект (по умолчанию используется 32-битная архитектура x86):
-   ```cmd
-   configure.cmd
-   ```
-
-3. Для быстрой сборки конкретных компонентов или полного ISO-образа воспользуйтесь скриптом:
-   ```cmd
-   build_target.bat bootcd
-   ```
-
-Готовый файл `bootcd.iso` будет сформирован в корне проекта и в папке `output-MinGW-i386`.
+* **The Core:** Memory management (PMM/VMM), PML4 setup, Ring 3 context switching, IPC, the C++ framebuffer compositor, storage drivers, and packet handlers were manually written, debugged, and validated.
+* **AI Assistance:** In the spirit of engineering transparency, ~20% of the codebase utilized AI assistance for generating boilerplate routines, initial scaffolding, and UI layout coordinate calculations.
+* **Privacy:** 100% offline-first. Zero telemetry. Network interfaces only initiate outbound traffic upon explicit user commands.
 
 ---
 
-## Лицензия
+## 🚀 Building & Running from Source
 
-Исходный код KeshOS распространяется на условиях лицензии **GNU General Public License версии 2.0 (GPLv2)**.  
-Ознакомиться с полным текстом лицензии можно в файле [COPYING](COPYING).
+### Prerequisites
+
+Ensure you have the following host tools installed:
+
+* **LLVM / Clang** (`clang`, `clang++`, `lld`) or `x86_64-elf-gcc`
+* **NASM** (x86_64 assembler)
+* **Ninja** build system & **Python 3**
+* **xorriso** (for bootable ISO creation)
+* **QEMU** or **VirtualBox** (for virtualization)
+
+### 1. Generating Build Script & Compiling Kernel
+
+KeshOS utilizes a high-speed Ninja build configuration generated by Python:
+
+```bash
+# Generate Ninja build graph
+python generate_ninja.py
+
+# Compile kernel, drivers, compositor, and userspace apps
+ninja
+```
+
+*(Alternatively, run `make` or `make all` to trigger the build automated pipeline).*
+
+### 2. Building the Bootable ISO Image
+
+To pack Limine bootloader binaries, kernel, and `.kea` packages into an ISO:
+
+```powershell
+# On Windows (PowerShell):
+powershell -ExecutionPolicy Bypass -File .\build-iso.ps1
+
+# Or via Makefile:
+make iso
+```
+
+This outputs `build/keshos.iso`.
+
+### 3. Running in Virtual Machine
+
+#### Running via QEMU:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\run-qemu.ps1
+# or
+make qemu
+```
+
+#### Running in VirtualBox:
+1. Create a VM with type **Other / Unknown (64-bit)**.
+2. Set Memory to **1024 MB – 2048 MB**, Video Memory to **32 MB – 64 MB**.
+3. Attach `build/keshos.iso` to the Optical Drive.
+4. Enable **Intel PRO/1000 MT Desktop (82540EM)** for network emulation.
+5. Start the VM and enjoy the desktop!
+
+---
+
+## 🗺 Roadmap
+
+- [x] UEFI/GPT boot via Limine protocol
+- [x] 4-level paging (PML4) & Ring 3 hardware isolation
+- [x] Linear framebuffer compositor (KeshShell) with double-buffering & composited UI
+- [x] In-kernel ARP, ICMP ping, and DNS resolver
+- [x] Native Ring 3 applications (Kesh Paint, Explorer, Task Manager, Shell, Notepad, Settings)
+- [x] Native `.kea` packaging pipeline and runtime execution
+- [x] **Release Candidate 1 (RC1) Public ISO Build**
+- [ ] Read/Write Ext4 filesystem persistence with extent tree parsing
+- [ ] Graphical LiveCD installer for bare-metal targets
+- [ ] OTA updates via web-hosted manifest & A/B slot fallback
+- [ ] *Long-term:* POSIX CLI binary compatibility layer
+
+---
+
+## 💬 Community & Contributing
+
+KeshOS is developed by **SneakDeak**. We welcome OS developers, low-level enthusiasts, and testers!
+
+- **Discord Server:** [discord.gg/YgMe7ekA5y](https://discord.gg/YgMe7ekA5y)
+- **Subreddit:** [r/sneakdeak](https://www.reddit.com/r/sneakdeak/)
+- **Official Website:** [kesh.sneakdeak.net](https://kesh.sneakdeak.net/)
