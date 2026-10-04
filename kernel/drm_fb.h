@@ -95,4 +95,12 @@ int drm_fb_ioctl(void *custom_ptr, uint64_t req, uint64_t arg);
 uint64_t drm_fb_mmap(int pid, size_t len, uint32_t prot);
 void drm_fb_release(void *custom_ptr);
 
+/* The legacy kernel desktop and a direct userspace compositor must never race
+ * each other for the same physical framebuffer. Opening /dev/fb0 grants one
+ * process temporary exclusive scanout ownership until its last fb0 FD closes.
+ * Input/network/process scheduling continue in the kernel while rendering is
+ * handed off. */
+int drm_fb_userspace_owned(void);
+int drm_fb_owner_pid(void);
+
 #endif /* KESHOS_DRM_FB_H */
