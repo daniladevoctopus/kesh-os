@@ -17,7 +17,7 @@ KeshOS already has the primitives needed for the first Ozone bring-up:
 ## M1 - OzoneKesh software display backend
 Status: IMPLEMENTED AS INITIAL PATCH
 
-Files in `chromium_overlay/keshos/ozone/` implement:
+Implemented:
 
 - OzonePlatformKesh
 - KeshWindowManager
@@ -38,22 +38,33 @@ Skia raster surface
 ```
 
 ## M2 - native input
-Status: NEXT
+Status: INITIAL IMPLEMENTATION DONE
 
-Use KeshOS `/dev/input/event0` and `/dev/input/event1` to feed Chromium
-KeyEvent/MouseEvent through PlatformEventSource. No kernel change is currently
-requested.
+`KeshEventSource` now:
+
+- opens KeshOS `/dev/input/event0` and `/dev/input/event1`
+- consumes KeshOS Linux-compatible `input_event` records
+- translates evdev key codes using Chromium's own KeycodeConverter
+- dispatches Chromium KeyEvent / MouseEvent / MouseWheelEvent
+- maintains keyboard modifiers and mouse button flags
+- exposes the live logical cursor location to KeshScreen
+
+The first implementation uses a 4 ms UI-thread polling timer. This avoids any
+kernel change and matches KeshOS's current non-blocking evdev queues. Replace
+with fd-watcher/poll integration after the basic Views smoke test if needed.
 
 ## M3 - Chromium base compatibility
-Status: NOT STARTED
+Status: NEXT
 
-Audit Linux/POSIX assumptions in Chromium base. Prefer userspace compatibility
-shims. Ask before changing KeshOS kernel/userspace ABI.
+Audit Linux/POSIX assumptions in Chromium base against the existing KeshOS musl
+port. Prefer userspace compatibility shims. Ask before changing KeshOS
+kernel/userspace ABI.
 
 ## M4 - Aura + Views smoke test
 Status: NOT STARTED
 
-Target: a single Views window rendered by OzoneKesh.
+Target: a single Views window rendered by OzoneKesh with working mouse and
+keyboard.
 
 ## M5 - Ash
 Status: NOT STARTED

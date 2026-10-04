@@ -4,10 +4,11 @@
 
 #include "base/check.h"
 #include "base/time/time.h"
+#include "keshos/ozone/kesh_event_source.h"
 #include "keshos/ozone/kesh_framebuffer.h"
-#include "keshos/ozone/kesh_window.h"
 #include "keshos/ozone/kesh_window_manager.h"
 #include "ui/display/display.h"
+#include "ui/gfx/geometry/point.h"
 
 namespace ui {
 
@@ -16,8 +17,11 @@ constexpr int64_t kKeshPrimaryDisplayId = 1;
 }
 
 KeshScreen::KeshScreen(KeshWindowManager* window_manager,
-                       KeshFramebuffer* framebuffer)
-    : window_manager_(window_manager), framebuffer_(framebuffer) {
+                       KeshFramebuffer* framebuffer,
+                       KeshEventSource* event_source)
+    : window_manager_(window_manager),
+      framebuffer_(framebuffer),
+      event_source_(event_source) {
   const int width = framebuffer_ && framebuffer_->valid()
                         ? framebuffer_->width()
                         : 1;
@@ -50,8 +54,7 @@ display::Display KeshScreen::GetDisplayForAcceleratedWidget(
 }
 
 gfx::Point KeshScreen::GetCursorScreenPoint() const {
-  // M2 will update this from /dev/input/event1.
-  return gfx::Point();
+  return event_source_ ? event_source_->cursor_position() : gfx::Point();
 }
 
 gfx::AcceleratedWidget KeshScreen::GetAcceleratedWidgetAtScreenPoint(

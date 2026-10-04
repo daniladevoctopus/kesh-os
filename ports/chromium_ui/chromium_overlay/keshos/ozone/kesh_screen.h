@@ -11,12 +11,15 @@
 
 namespace ui {
 
+class KeshEventSource;
 class KeshFramebuffer;
 class KeshWindowManager;
 
 class KeshScreen : public PlatformScreen {
  public:
-  KeshScreen(KeshWindowManager* window_manager, KeshFramebuffer* framebuffer);
+  KeshScreen(KeshWindowManager* window_manager,
+             KeshFramebuffer* framebuffer,
+             KeshEventSource* event_source);
   ~KeshScreen() override;
 
   const std::vector<display::Display>& GetAllDisplays() const override;
@@ -38,6 +41,7 @@ class KeshScreen : public PlatformScreen {
  private:
   raw_ptr<KeshWindowManager> window_manager_;
   raw_ptr<KeshFramebuffer> framebuffer_;
+  raw_ptr<KeshEventSource> event_source_;
   display::DisplayList display_list_;
 };
 

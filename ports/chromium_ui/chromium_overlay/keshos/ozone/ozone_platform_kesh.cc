@@ -6,6 +6,7 @@
 #include <memory>
 
 #include "base/no_destructor.h"
+#include "keshos/ozone/kesh_event_source.h"
 #include "keshos/ozone/kesh_screen.h"
 #include "keshos/ozone/kesh_surface_factory.h"
 #include "keshos/ozone/kesh_window.h"
@@ -14,7 +15,6 @@
 #include "ui/base/ime/input_method_minimal.h"
 #include "ui/events/ozone/layout/keyboard_layout_engine_manager.h"
 #include "ui/events/ozone/layout/stub/stub_keyboard_layout_engine.h"
-#include "ui/events/platform/platform_event_source.h"
 #include "ui/ozone/common/bitmap_cursor_factory.h"
 #include "ui/ozone/common/stub_overlay_manager.h"
 #include "ui/ozone/public/gpu_platform_support_host.h"
@@ -24,12 +24,6 @@
 namespace ui {
 
 namespace {
-
-class KeshPlatformEventSource final : public PlatformEventSource {
- public:
-  KeshPlatformEventSource() = default;
-  ~KeshPlatformEventSource() override = default;
-};
 
 class OzonePlatformKesh final : public OzonePlatform {
  public:
@@ -75,7 +69,8 @@ class OzonePlatformKesh final : public OzonePlatform {
   std::unique_ptr<PlatformScreen> CreateScreen() override {
     return std::make_unique<KeshScreen>(
         window_manager_.get(),
-        surface_factory_ ? surface_factory_->framebuffer() : nullptr);
+        surface_factory_ ? surface_factory_->framebuffer() : nullptr,
+        event_source_.get());
   }
 
   void InitScreen(PlatformScreen* screen) override {}
@@ -101,8 +96,10 @@ class OzonePlatformKesh final : public OzonePlatform {
     surface_factory_ =
         std::make_unique<KeshSurfaceFactory>(window_manager_.get());
 
-    if (!PlatformEventSource::GetInstance())
-      event_source_ = std::make_unique<KeshPlatformEventSource>();
+    if (!PlatformEventSource::GetInstance()) {
+      event_source_ = std::make_unique<KeshEventSource>(
+          surface_factory_->framebuffer());
+    }
 
     keyboard_layout_engine_ = std::make_unique<StubKeyboardLayoutEngine>();
     KeyboardLayoutEngineManager::SetKeyboardLayoutEngine(
@@ -125,7 +122,7 @@ class OzonePlatformKesh final : public OzonePlatform {
   std::unique_ptr<KeyboardLayoutEngine> keyboard_layout_engine_;
   std::unique_ptr<KeshWindowManager> window_manager_;
   std::unique_ptr<KeshSurfaceFactory> surface_factory_;
-  std::unique_ptr<PlatformEventSource> event_source_;
+  std::unique_ptr<KeshEventSource> event_source_;
   std::unique_ptr<CursorFactory> cursor_factory_;
   std::unique_ptr<InputController> input_controller_;
   std::unique_ptr<GpuPlatformSupportHost> gpu_platform_support_host_;

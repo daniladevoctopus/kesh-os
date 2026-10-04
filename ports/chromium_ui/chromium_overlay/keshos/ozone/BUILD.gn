@@ -3,6 +3,8 @@
 
 source_set("kesh") {
   sources = [
+    "kesh_event_source.cc",
+    "kesh_event_source.h",
     "kesh_framebuffer.cc",
     "kesh_framebuffer.h",
     "kesh_screen.cc",
@@ -27,6 +29,8 @@ source_set("kesh") {
     "//ui/base/ime",
     "//ui/display",
     "//ui/events",
+    "//ui/events:dom_keycode_converter",
+    "//ui/events:events_base",
     "//ui/events/ozone/layout",
     "//ui/events/platform",
     "//ui/gfx",
