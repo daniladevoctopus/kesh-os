@@ -77,7 +77,7 @@ int drm_fb_ioctl(void *custom_ptr, uint64_t req, uint64_t arg) {
         v.version_patchlevel = 0;
 
         const char dname[] = "keshos-drm";
-        const char ddate[] = "20261003";
+        const char ddate[] = "20261004";
         const char ddesc[] = "KeshOS KMS/DRM Driver";
 
         if (v.name && v.name_len > 0) copy_to_user((void *)v.name, dname, sizeof(dname));
@@ -102,13 +102,16 @@ uint64_t drm_fb_mmap(int pid, size_t len, uint32_t prot) {
     (void)pid;
     if (!g_fb_vram || len == 0) return 0;
 
-    uint32_t total_size = g_screen_pitch * g_screen_h;
-    size_t actual_len = len > total_size ? total_size : len;
+    uint64_t total_size = (uint64_t)g_screen_pitch * (uint64_t)g_screen_h;
+    uint64_t actual_len = (uint64_t)len > total_size ? total_size : (uint64_t)len;
     uint64_t num_pages = (actual_len + 4095ULL) / 4096ULL;
 
-    /* Build physical pages table for direct VRAM mapping */
-    #define MAX_FB_PAGES 2048
-    if (num_pages > MAX_FB_PAGES) num_pages = MAX_FB_PAGES;
+    /* 64 MiB covers 4K 32-bpp framebuffers with headroom. More importantly,
+     * never silently return a shorter mapping than userspace requested: doing
+     * so made a later framebuffer write turn into a mysterious page fault. */
+    #define MAX_FB_PAGES 16384
+    if (num_pages == 0 || num_pages > MAX_FB_PAGES) return 0;
+
     static uint64_t s_fb_phys[MAX_FB_PAGES];
     extern uint64_t g_hhdm_offset;
     uint64_t base_phys = (uint64_t)g_fb_vram;
