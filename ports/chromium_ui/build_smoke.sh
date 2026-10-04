@@ -13,7 +13,10 @@ JOBS="${KESH_CHROMIUM_JOBS:-2}"
 
 "$HERE/prepare_build.sh" "$CHROMIUM" --gen
 
-TARGET="ozone_demo"
+# Build our deliberately tiny first milestone instead of Chromium's upstream
+# ozone_demo. The upstream demo also links GL, tracing and Mojo setup, none of
+# which are needed to prove Skia -> OzoneKesh -> KeshOS framebuffer.
+TARGET="keshos/ozone:kesh_smoke"
 if command -v autoninja >/dev/null 2>&1; then
   (cd "$CHROMIUM" && NINJA_SUMMARIZE_BUILD=1 autoninja -j "$JOBS" -C out/KeshOS "$TARGET")
 elif command -v ninja >/dev/null 2>&1; then
@@ -23,9 +26,12 @@ else
   exit 3
 fi
 
-BIN="$CHROMIUM/out/KeshOS/ozone_demo"
+BIN="$CHROMIUM/out/KeshOS/kesh_smoke"
 if [[ ! -f "$BIN" ]]; then
-  echo "Build completed but $BIN was not found."
+  BIN="$(find "$CHROMIUM/out/KeshOS" -type f -name kesh_smoke -print -quit)"
+fi
+if [[ -z "${BIN:-}" || ! -f "$BIN" ]]; then
+  echo "Build completed but the kesh_smoke executable was not found."
   exit 4
 fi
 
@@ -39,13 +45,13 @@ HEADER="$($READELF -h "$BIN")"
 PROGRAMS="$($READELF -l "$BIN")"
 
 if ! grep -Eq 'Type:[[:space:]]+EXEC' <<<"$HEADER"; then
-  echo "ERROR: ozone_demo is not ET_EXEC. KeshOS loader rejects PIE/ET_DYN."
+  echo "ERROR: kesh_smoke is not ET_EXEC. KeshOS loader rejects PIE/ET_DYN."
   echo "$HEADER"
   exit 10
 fi
 
 if grep -Eq 'INTERP|DYNAMIC' <<<"$PROGRAMS"; then
-  echo "ERROR: ozone_demo contains PT_INTERP/PT_DYNAMIC. KeshOS needs a static executable."
+  echo "ERROR: kesh_smoke contains PT_INTERP/PT_DYNAMIC. KeshOS needs a static executable."
   echo "$PROGRAMS"
   exit 11
 fi
@@ -53,12 +59,12 @@ fi
 # KeshOS enforces W^X in the ELF loader. Accept normal R E and RW segments,
 # reject any LOAD segment whose flag column contains RWE.
 if "$READELF" -W -l "$BIN" | grep 'LOAD' | grep -Eq 'RWE|RW E|R E W'; then
-  echo "ERROR: ozone_demo contains a writable+executable LOAD segment."
+  echo "ERROR: kesh_smoke contains a writable+executable LOAD segment."
   "$READELF" -W -l "$BIN" | grep LOAD
   exit 12
 fi
 
-STAGED="$KESH_ROOT/ports_bin/ozone_demo.elf"
+STAGED="$KESH_ROOT/ports_bin/kesh_smoke.elf"
 mkdir -p "$KESH_ROOT/ports_bin"
 cp -f "$BIN" "$STAGED"
 
@@ -80,4 +86,4 @@ echo "ELF: static ET_EXEC, W^X validation passed"
 echo "Runtime Ozone default: kesh"
 echo "KeshOS ISO packaging copies ports_bin/*.elf to /boot/apps/."
 echo
-echo "Next: python3 generate_ninja.py && ninja build/keshos.iso"
+echo "Next: ./build.sh"
