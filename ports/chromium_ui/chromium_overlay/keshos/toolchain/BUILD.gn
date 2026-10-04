@@ -25,9 +25,16 @@ gcc_toolchain("kesh_x64") {
 
   # Chromium's generic Linux config emits a GNU target triple. These flags are
   # appended later so the KeshOS musl target wins.
-  extra_cflags = "--target=x86_64-unknown-linux-musl"
-  extra_cxxflags = "--target=x86_64-unknown-linux-musl"
-  extra_ldflags = "--target=x86_64-unknown-linux-musl -static"
+  # The target triple alone is not enough: clang would otherwise keep using
+  # host headers/libraries. Force every target compile/link through the KeshOS
+  # musl sysroot.
+  extra_cflags =
+      "--target=x86_64-unknown-linux-musl --sysroot=\"$keshos_sysroot\""
+  extra_cxxflags =
+      "--target=x86_64-unknown-linux-musl --sysroot=\"$keshos_sysroot\""
+  extra_ldflags =
+      "--target=x86_64-unknown-linux-musl --sysroot=\"$keshos_sysroot\" " +
+      "-static -fuse-ld=lld"
 
   enable_linker_map = false
 

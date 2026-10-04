@@ -19,6 +19,23 @@ if [[ ! -d "$SYSROOT_REAL/include" || ! -d "$SYSROOT_REAL/lib" ]]; then
   exit 3
 fi
 
+# OzoneKesh M1/M2 intentionally consumes the Linux-compatible ABI headers that
+# KeshOS already implements in its own kernel. Fail before a multi-hour
+# Chromium build if the sysroot is incomplete.
+for required in \
+  "$SYSROOT_REAL/include/linux/fb.h" \
+  "$SYSROOT_REAL/include/linux/input.h"; do
+  if [[ ! -f "$required" ]]; then
+    echo "KeshOS sysroot is missing required compatibility header: $required"
+    exit 31
+  fi
+done
+
+if [[ ! -e "$SYSROOT_REAL/lib/libc.a" ]]; then
+  echo "KeshOS sysroot is missing static musl libc: $SYSROOT_REAL/lib/libc.a"
+  exit 32
+fi
+
 CLANG="$(command -v clang || true)"
 if [[ -z "$CLANG" ]]; then
   echo "clang was not found in PATH"

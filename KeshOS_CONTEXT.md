@@ -452,3 +452,14 @@ not a Linux-kernel dependency.
 `ports_bin/ozone_demo.elf`, boot it on real KeshOS, then fix only the concrete
 syscall/Ozone failures it exposes. Aura and Views come after that, Ash after
 Views.
+
+
+### 2026-10-04 — OzoneKesh build-boundary hardening
+
+- Rechecked OpenFyde r144 Ozone APIs and the KeshOS Linux-compatible syscall path before the first real build.
+- Confirmed KeshOS `linux_syscall.c` routes file-backed `mmap()` for `FD_KIND_DRM_FB` to `drm_fb_mmap()`, so the current OzoneKesh framebuffer mmap path is backed by the KeshOS kernel rather than Linux.
+- Confirmed Chromium's Ozone software renderer reaches `SurfaceFactoryOzone::CreateCanvasForWidget()`, matching the current KeshSurfaceFactory design.
+- Fixed the custom Chromium target toolchain so clang is explicitly passed `--sysroot=<KeshOS musl sysroot>` for C, C++ and linking. A target triple alone was not sufficient to prevent host headers/libraries leaking into target objects.
+- Added early sysroot checks for `linux/fb.h`, `linux/input.h` and static musl `libc.a` before starting an expensive Chromium build.
+- No KeshOS kernel or userspace ABI source was changed in this pass.
+- Next milestone remains the first actual `ozone_demo` build/run, then concrete fixes from compiler/runtime errors before moving to Aura/Views.
