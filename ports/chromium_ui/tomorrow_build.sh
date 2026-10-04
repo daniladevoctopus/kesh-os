@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# One-command bring-up for the first OpenFyde/Chromium UI running on KeshOS.
-# Run from any directory:
+# One-command bring-up for the first OpenFyde/Chromium UI code running on
+# KeshOS. Run from any directory:
 #   ./ports/chromium_ui/tomorrow_build.sh
 #
 # Optional:
@@ -56,9 +56,9 @@ else
   fi
 fi
 
-# The source sync is usually much slower than the KeshOS kernel build. Limit
-# target parallelism by default so a 2-core/4-thread machine stays responsive.
-echo "[2/4] Building Chromium ozone_demo for KeshOS..."
+# Keep target parallelism low by default so a 2-core/4-thread development
+# machine remains usable during the first cross-build.
+echo "[2/4] Building minimal Chromium/Skia OzoneKesh smoke app..."
 KESH_CHROMIUM_JOBS="${KESH_CHROMIUM_JOBS:-2}" \
   "$HERE/build_smoke.sh" "$SRC"
 
@@ -70,7 +70,7 @@ if [[ ! -f build/keshos.iso ]]; then
   exit 5
 fi
 
-if command -v python3 >/dev/null 2>&1 && [[ -f tools/verify_iso.py ]]; then
+if [[ -f tools/verify_iso.py ]]; then
   python3 tools/verify_iso.py
 fi
 
@@ -80,13 +80,16 @@ echo "=============================================="
 echo " FIRST OZONEKESH IMAGE READY"
 echo "=============================================="
 echo "ISO: $KESH_ROOT/build/keshos.iso"
-echo "App inside ISO: /boot/apps/ozone_demo.elf"
+echo "App inside ISO: /boot/apps/kesh_smoke.elf"
 echo
 echo "Boot KeshOS, open Terminal and run:"
-echo "  run /boot/apps/ozone_demo.elf"
+echo "  run /boot/apps/kesh_smoke.elf"
 echo
-echo "The demo should paint through:"
-echo "  Chromium Skia -> OzoneKesh -> /dev/fb0 -> KeshOS"
+echo "Expected picture: dark Chromium/Skia test shell with three cards,"
+echo "an orange bar and a moving green heartbeat at the bottom."
 echo
-echo "Press Q while the Ozone demo has focus to exit it."
-echo "If it fails, keep the serial log and the final compiler/runtime output."
+echo "Rendering path:"
+echo "  Chromium base + Skia -> OzoneKesh -> /dev/fb0 -> KeshOS kernel"
+echo
+echo "The first smoke app intentionally runs until reboot/termination."
+echo "If it fails, save serial.log plus the final compiler/runtime output."
