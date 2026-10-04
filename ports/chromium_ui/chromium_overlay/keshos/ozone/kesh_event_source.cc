@@ -5,13 +5,13 @@
 #include <algorithm>
 
 #include <fcntl.h>
-#include <linux/input.h>
 #include <unistd.h>
 
 #include "base/location.h"
 #include "base/logging.h"
 #include "base/time/time.h"
 #include "keshos/ozone/kesh_framebuffer.h"
+#include "keshos/ozone/kesh_linux_abi.h"
 #include "ui/events/event.h"
 #include "ui/events/event_constants.h"
 #include "ui/events/keycodes/dom/keycode_converter.h"
@@ -28,17 +28,17 @@ constexpr base::TimeDelta kPollInterval = base::Milliseconds(4);
 
 int MouseButtonFlag(unsigned int code) {
   switch (code) {
-    case BTN_LEFT:
+    case kesh_abi::kBtnLeft:
       return EF_LEFT_MOUSE_BUTTON;
-    case BTN_MIDDLE:
+    case kesh_abi::kBtnMiddle:
       return EF_MIDDLE_MOUSE_BUTTON;
-    case BTN_RIGHT:
+    case kesh_abi::kBtnRight:
       return EF_RIGHT_MOUSE_BUTTON;
-    case BTN_BACK:
-    case BTN_SIDE:
+    case kesh_abi::kBtnBack:
+    case kesh_abi::kBtnSide:
       return EF_BACK_MOUSE_BUTTON;
-    case BTN_FORWARD:
-    case BTN_EXTRA:
+    case kesh_abi::kBtnForward:
+    case kesh_abi::kBtnExtra:
       return EF_FORWARD_MOUSE_BUTTON;
     default:
       return EF_NONE;
@@ -56,8 +56,6 @@ KeshEventSource::KeshEventSource(KeshFramebuffer* framebuffer) {
   cursor_x_ = screen_width_ / 2;
   cursor_y_ = screen_height_ / 2;
 
-  // KeshOS evdev reads are already non-blocking from the kernel side and
-  // return EAGAIN when a queue is empty, so O_RDONLY is sufficient.
   keyboard_fd_ = open("/dev/input/event0", O_RDONLY);
   if (keyboard_fd_ < 0)
     PLOG(ERROR) << "OzoneKesh: failed to open /dev/input/event0";
@@ -95,10 +93,10 @@ void KeshEventSource::DrainKeyboard() {
   if (keyboard_fd_ < 0)
     return;
 
-  input_event event = {};
+  kesh_abi::InputEvent event = {};
   while (read(keyboard_fd_, &event, sizeof(event)) ==
          static_cast<ssize_t>(sizeof(event))) {
-    if (event.type == EV_KEY)
+    if (event.type == kesh_abi::kEvKey)
       DispatchKey(event.code, event.value);
   }
 }
@@ -107,29 +105,29 @@ void KeshEventSource::DrainMouse() {
   if (mouse_fd_ < 0)
     return;
 
-  input_event event = {};
+  kesh_abi::InputEvent event = {};
   while (read(mouse_fd_, &event, sizeof(event)) ==
          static_cast<ssize_t>(sizeof(event))) {
     switch (event.type) {
-      case EV_REL:
-        if (event.code == REL_X) {
+      case kesh_abi::kEvRel:
+        if (event.code == kesh_abi::kRelX) {
           cursor_x_ = std::clamp(cursor_x_ + event.value, 0, screen_width_ - 1);
           mouse_moved_ = true;
-        } else if (event.code == REL_Y) {
+        } else if (event.code == kesh_abi::kRelY) {
           cursor_y_ =
               std::clamp(cursor_y_ + event.value, 0, screen_height_ - 1);
           mouse_moved_ = true;
-        } else if (event.code == REL_WHEEL) {
+        } else if (event.code == kesh_abi::kRelWheel) {
           wheel_delta_y_ += event.value * MouseWheelEvent::kWheelDelta;
         }
         break;
 
-      case EV_KEY:
+      case kesh_abi::kEvKey:
         DispatchMouseButton(event.code, event.value);
         break;
 
-      case EV_SYN:
-        if (event.code == SYN_REPORT) {
+      case kesh_abi::kEvSyn:
+        if (event.code == kesh_abi::kSynReport) {
           if (mouse_moved_)
             DispatchMouseMove();
           if (wheel_delta_y_ != 0)
@@ -154,8 +152,6 @@ void KeshEventSource::DispatchKey(unsigned int code, int value) {
   DomKey dom_key = DomKey::NONE;
   KeyboardCode key_code = DomCodeToUsLayoutKeyboardCode(dom_code);
 
-  // Resolve the key once using the pre-event modifier state so we can identify
-  // whether this key itself changes a modifier.
   DomCodeToUsLayoutDomKey(dom_code, keyboard_flags_, &dom_key, &key_code);
   const int modifier_flag = ModifierDomKeyToEventFlag(dom_key);
 
@@ -172,7 +168,6 @@ void KeshEventSource::DispatchKey(unsigned int code, int value) {
       keyboard_flags_ &= ~modifier_flag;
   }
 
-  // Re-resolve printable meaning with the post-event modifier state.
   DomKey resolved_key = dom_key;
   KeyboardCode resolved_code = key_code;
   DomCodeToUsLayoutDomKey(dom_code, keyboard_flags_, &resolved_key,
@@ -200,7 +195,6 @@ void KeshEventSource::DispatchMouseButton(unsigned int code, int value) {
   else
     mouse_button_flags_ &= ~changed;
 
-  // Chromium keeps the changed button bit on release events too.
   const int flags = keyboard_flags_ | mouse_button_flags_ | changed;
   const gfx::Point location(cursor_x_, cursor_y_);
   MouseEvent mouse_event(pressed ? EventType::kMousePressed
