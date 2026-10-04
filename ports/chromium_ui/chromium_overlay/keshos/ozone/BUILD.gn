@@ -7,6 +7,7 @@ source_set("kesh") {
     "kesh_event_source.h",
     "kesh_framebuffer.cc",
     "kesh_framebuffer.h",
+    "kesh_linux_abi.h",
     "kesh_screen.cc",
     "kesh_screen.h",
     "kesh_surface_factory.cc",
