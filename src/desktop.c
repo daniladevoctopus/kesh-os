@@ -16,6 +16,11 @@
 #include "gfx/gpu.h"
 #include "uwindow.h"
 #include "process.h"
+#include "acpi.h"
+#include "drivers/system/fat32.h"
+#include "log.h"
+#include "random.h"
+#include "service.h"
 
 extern void toggle_file_manager(void) __attribute__((weak));
 extern void toggle_doom_app(void) __attribute__((weak));
@@ -40,6 +45,26 @@ extern const uint8_t calc_icon_bmp_start[] __attribute__((weak));
 extern const uint8_t notes_icon_bmp_start[] __attribute__((weak));
 extern const uint8_t settings_icon_bmp_start[] __attribute__((weak));
 extern const uint8_t terminal_icon_bmp_start[] __attribute__((weak));
+extern const uint8_t kesh_icon_explorer_start[] __attribute__((weak));
+extern const uint8_t kesh_icon_explorer_end[] __attribute__((weak));
+extern const uint8_t kesh_icon_notepad_start[] __attribute__((weak));
+extern const uint8_t kesh_icon_notepad_end[] __attribute__((weak));
+extern const uint8_t kesh_icon_terminal_start[] __attribute__((weak));
+extern const uint8_t kesh_icon_terminal_end[] __attribute__((weak));
+extern const uint8_t kesh_icon_taskmgr_start[] __attribute__((weak));
+extern const uint8_t kesh_icon_taskmgr_end[] __attribute__((weak));
+extern const uint8_t kesh_icon_paint_start[] __attribute__((weak));
+extern const uint8_t kesh_icon_paint_end[] __attribute__((weak));
+extern const uint8_t kesh_icon_doom_start[] __attribute__((weak));
+extern const uint8_t kesh_icon_doom_end[] __attribute__((weak));
+extern const uint8_t kesh_icon_installer_start[] __attribute__((weak));
+extern const uint8_t kesh_icon_installer_end[] __attribute__((weak));
+extern const uint8_t kesh_icon_settings_start[] __attribute__((weak));
+extern const uint8_t kesh_icon_settings_end[] __attribute__((weak));
+extern const uint8_t kesh_icon_file_start[] __attribute__((weak));
+extern const uint8_t kesh_icon_file_end[] __attribute__((weak));
+extern const uint8_t kesh_icon_picture_start[] __attribute__((weak));
+extern const uint8_t kesh_icon_picture_end[] __attribute__((weak));
 
 #define TASKBAR_MARGIN_BOTTOM 10
 #define TASKBAR_MARGIN_X      12
@@ -55,6 +80,14 @@ extern const uint8_t wallpaper_night_bmp_start[] __attribute__((weak));
 int g_wallpaper_choice = 1;
 int g_dark_mode = 1;
 int g_accent_color = 0; // 0 = amber/orange (default), 1 = blue, 2 = red
+/* Global UI preferences exposed to Ring 3 settings.  Themes intentionally use
+   quiet paper/slate/linen palettes rather than neon desktop effects. */
+int g_theme_id = 1;
+int g_animations_enabled = 1;
+int g_animation_speed = 65;
+int g_interface_density = 1;
+int g_show_seconds = 0;
+int g_liquid_glass = 0;
 
 uint32_t get_accent_color(void) {
     switch (g_accent_color) {
@@ -125,22 +158,26 @@ typedef struct {
     uint32_t colors_important;
 } __attribute__((packed)) bmp_info_header_t;
 
+static void draw_scaled_ico(const uint8_t *data, const uint8_t *end, int x, int y, int size);
+
 typedef struct {
     const char* title;
     const uint8_t* bmp_data;
+    const uint8_t* ico_start;
+    const uint8_t* ico_end;
     uint32_t fallback_color;
 } dock_app_t;
 
 static dock_app_t dock_apps[] = {
-    {"Files",      file_icon_bmp_start,      0x00007AFF},
-    {"Terminal",   terminal_icon_bmp_start,  0x001C1C1E},
-    {"DOOM",       doom_icon_bmp_start,      0x00B22222},
-    {"Calculator", calc_icon_bmp_start,      0x00FF9500},
-    {"Settings",   settings_icon_bmp_start,  0x008E8E93},
-    {"Music",      music_icon_bmp_start,     0x00FF2D55},
-    {"Notepad",    notes_icon_bmp_start,     0x0034C759},
-    {"TaskMgr",    NULL,                     0x00107C41},
-    {"Paint",      NULL,                     0x00AF52DE}
+    {"Files", file_icon_bmp_start, kesh_icon_file_start, kesh_icon_file_end, 0x00007AFF},
+    {"Terminal", terminal_icon_bmp_start, kesh_icon_file_start, kesh_icon_file_end, 0x001C1C1E},
+    {"DOOM", doom_icon_bmp_start, kesh_icon_file_start, kesh_icon_file_end, 0x00B22222},
+    {"Calculator", calc_icon_bmp_start, kesh_icon_file_start, kesh_icon_file_end, 0x00FF9500},
+    {"Settings", settings_icon_bmp_start, kesh_icon_settings_start, kesh_icon_settings_end, 0x008E8E93},
+    {"Music", music_icon_bmp_start, kesh_icon_picture_start, kesh_icon_picture_end, 0x00FF2D55},
+    {"Notepad", notes_icon_bmp_start, kesh_icon_file_start, kesh_icon_file_end, 0x0034C759},
+    {"TaskMgr", NULL, kesh_icon_file_start, kesh_icon_file_end, 0x00107C41},
+    {"Paint", NULL, kesh_icon_file_start, kesh_icon_file_end, 0x00AF52DE}
 };
 
 static int app_count =
@@ -156,7 +193,7 @@ enum { WIN_ID_FILE = 0, WIN_ID_MUSIC, WIN_ID_ABOUT, WIN_ID_CALC, WIN_ID_TERMINAL
 static int g_win_z_order[WIN_COUNT] = { WIN_ID_FILE, WIN_ID_MUSIC, WIN_ID_ABOUT, WIN_ID_CALC, WIN_ID_TERMINAL, WIN_ID_SETTINGS, WIN_ID_DOOM, WIN_ID_USER_APP };
 static int g_current_render_id = -1;
 
-static void win_bring_to_front(int id)
+void win_bring_to_front(int id)
 {
     int pos = -1;
     for (int i = 0; i < WIN_COUNT; i++) {
@@ -283,6 +320,18 @@ void toggle_paint_user_app(void)
     }
 }
 
+void toggle_installer_user_app(void)
+{
+    user_window_t *win = find_uwindow_by_title_substr("Install KeshOS");
+    if (win) {
+        win->minimized = !win->minimized;
+        if (!win->minimized) { win->anim_state = 1; win->anim_t = 0; win_bring_to_front(WIN_ID_USER_APP); }
+        return;
+    }
+    process_spawn_path("/apps/installer.kea");
+    win_bring_to_front(WIN_ID_USER_APP);
+}
+
 extern const uint8_t settings_elf_start[] __attribute__((weak));
 extern const uint8_t settings_elf_end[] __attribute__((weak));
 
@@ -298,8 +347,9 @@ void toggle_settings_user_app(void)
         }
         return;
     }
-    toggle_settings_app();
-    win_bring_to_front(WIN_ID_SETTINGS);
+    process_t *p = process_spawn_path("/apps/settings.kea");
+    if (!p) toggle_settings_app();
+    win_bring_to_front(p ? WIN_ID_USER_APP : WIN_ID_SETTINGS);
 }
 
 extern const uint8_t about_elf_start[] __attribute__((weak));
@@ -465,6 +515,10 @@ static inline void outw(uint16_t port, uint16_t val)
 
 void sys_shutdown(void)
 {
+    KLOG_NOTICE("power", "clean shutdown requested; persisting diagnostics");
+    (void)random_save_persistent_seed();
+    (void)klog_persist();
+    (void)fat32_shutdown_clean();
     uint32_t total_pixels =
         scr_width * scr_height;
 
@@ -507,6 +561,8 @@ void sys_shutdown(void)
     );
 
     desktop_swap_buffers();
+
+    (void)acpi_poweroff();
 
     outw(0x604, 0x2000);
     outw(0xB004, 0x2000);
@@ -995,30 +1051,56 @@ void render_layer_background(void)
 
 typedef struct {
     const char *title;
-    const char *tag;
     const char *path;
-    uint32_t bg_color;
+    const uint8_t *ico_start;
+    const uint8_t *ico_end;
     int x;
     int y;
 } dicon_t;
 
 static dicon_t s_desktop_icons[] = {
-    { "Explorer", "[DIR]", "/apps/explorer.kea", 0x0024527A, 28, 36 },
-    { "Notepad",  "[TXT]", "/apps/notepad.kea",  0x002B3A4D, 28, 126 },
-    { "Terminal", "[CLI]", "terminal",           0x001B2028, 28, 216 },
-    { "TaskMgr",  "[TSK]", "/apps/taskmgr.kea",  0x001E3A2F, 28, 306 },
-    { "Paint",    "[ART]", "/apps/paint.kea",    0x005E2B5A, 28, 396 },
-    { "Doom",     "[WAD]", "doom",               0x007A2020, 116, 36 }
+    { "Explorer", "/apps/explorer.kea", kesh_icon_file_start,      kesh_icon_file_end,      28,  36 },
+    { "Notepad",  "/apps/notepad.kea",  kesh_icon_file_start,      kesh_icon_file_end,      124, 36 },
+    { "Settings", "/apps/settings.kea", kesh_icon_settings_start,  kesh_icon_settings_end,  220, 36 },
+    { "Terminal", "terminal",           kesh_icon_file_start,      kesh_icon_file_end,      28,  132 },
+    { "TaskMgr",  "/apps/taskmgr.kea",  kesh_icon_file_start,      kesh_icon_file_end,      124, 132 },
+    { "Paint",    "/apps/paint.kea",    kesh_icon_file_start,      kesh_icon_file_end,      220, 132 },
+    { "Doom",     "doom",               kesh_icon_file_start,      kesh_icon_file_end,      28,  228 },
+    { "Install",  "/apps/installer.kea",kesh_icon_installer_start, kesh_icon_installer_end, 124, 228 }
 };
-#define NUM_DESKTOP_ICONS 6
+#define NUM_DESKTOP_ICONS 8
+
+static uint16_t ico_u16(const uint8_t *p) { return (uint16_t)p[0] | ((uint16_t)p[1] << 8); }
+static uint32_t ico_u32(const uint8_t *p) { return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24); }
+
+static void draw_scaled_ico(const uint8_t *data, const uint8_t *end, int x, int y, int size) {
+    if (!data || !end || end <= data || (uint64_t)(end - data) < 62 || ico_u16(data) || ico_u16(data + 2) != 1 || ico_u16(data + 4) < 1) return;
+    uint32_t total = (uint32_t)(end - data), offset = ico_u32(data + 18), image_size = ico_u32(data + 14);
+    if (offset > total || image_size > total - offset || image_size < 40) return;
+    const uint8_t *dib = data + offset;
+    int width = (int)ico_u32(dib + 4), height = (int)ico_u32(dib + 8) / 2;
+    if (width < 1 || height < 1 || width > 256 || height > 256 || ico_u16(dib + 14) != 32 || ico_u32(dib + 16) != 0 || (uint32_t)width * (uint32_t)height * 4U > image_size - 40U) return;
+    const uint8_t *pixels = dib + 40;
+    for (int dy = 0; dy < size; ++dy) for (int dx = 0; dx < size; ++dx) {
+        int sx = dx * width / size, sy = height - 1 - dy * height / size;
+        const uint8_t *src = pixels + ((uint32_t)sy * (uint32_t)width + (uint32_t)sx) * 4U;
+        uint32_t a = src[3]; if (!a) continue;
+        uint32_t *dst = &backbuffer[(y + dy) * scr_width + x + dx];
+        uint32_t bg = *dst, inv = 255U - a;
+        uint32_t r = ((uint32_t)src[2] * a + ((bg >> 16) & 255U) * inv) / 255U;
+        uint32_t g = ((uint32_t)src[1] * a + ((bg >> 8) & 255U) * inv) / 255U;
+        uint32_t b = ((uint32_t)src[0] * a + (bg & 255U) * inv) / 255U;
+        *dst = (r << 16) | (g << 8) | b;
+    }
+}
 
 void render_desktop_icons(int single_click)
 {
 
     for (int i = 0; i < NUM_DESKTOP_ICONS; i++) {
         dicon_t *di = &s_desktop_icons[i];
-        int w = 72;
-        int h = 76;
+        int w = 82;
+        int h = 84;
         int hover = (mouse_x >= di->x && mouse_x < di->x + w &&
                      mouse_y >= di->y && mouse_y < di->y + h);
 
@@ -1026,22 +1108,16 @@ void render_desktop_icons(int single_click)
             draw_rounded_rect_alpha(di->x, di->y, w, h, 10, 0x00FFFFFF, 35);
         }
 
-        int tx = di->x + (w - 44) / 2;
+        int tx = di->x + (w - 48) / 2;
         int ty = di->y + 4;
         draw_rounded_rect_alpha(tx - 2, ty + 2, 48, 48, 10, 0x00000000, 45);
-        draw_rounded_rect_buf(tx, ty, 44, 44, 10, di->bg_color);
-        draw_rounded_rect_alpha(tx, ty, 44, 20, 10, 0x00FFFFFF, 30);
-
-        int tag_len = 0;
-        while (di->tag[tag_len]) tag_len++;
-        int tag_x = tx + (44 - tag_len * 8) / 2;
-        draw_string(di->tag, tag_x, ty + 16, 0x00FFFFFF, backbuffer, scr_width);
+        draw_scaled_ico(di->ico_start, di->ico_end, tx, ty, 48);
 
         int name_len = 0;
         while (di->title[name_len]) name_len++;
         int name_x = di->x + (w - name_len * 8) / 2;
-        draw_string(di->title, name_x + 1, di->y + 55, 0x00000000, backbuffer, scr_width);
-        draw_string(di->title, name_x, di->y + 54, 0x00FFFFFF, backbuffer, scr_width);
+        draw_string(di->title, name_x + 1, di->y + 61, 0x00000000, backbuffer, scr_width);
+        draw_string(di->title, name_x, di->y + 60, 0x00FFFFFF, backbuffer, scr_width);
 
         if (hover && single_click) {
             if (i == 0) {
@@ -1051,17 +1127,21 @@ void render_desktop_icons(int single_click)
                 toggle_notepad_user_app();
                 win_bring_to_front(WIN_ID_USER_APP);
             } else if (i == 2) {
+                toggle_settings_user_app();
+            } else if (i == 3) {
                 toggle_terminal_app();
                 win_bring_to_front(WIN_ID_TERMINAL);
-            } else if (i == 3) {
+            } else if (i == 4) {
                 toggle_taskmgr_user_app();
                 win_bring_to_front(WIN_ID_USER_APP);
-            } else if (i == 4) {
+            } else if (i == 5) {
                 toggle_paint_user_app();
                 win_bring_to_front(WIN_ID_USER_APP);
-            } else if (i == 5 && toggle_doom_app) {
+            } else if (i == 6 && toggle_doom_app) {
                 toggle_doom_app();
                 win_bring_to_front(WIN_ID_DOOM);
+            } else if (i == 7) {
+                toggle_installer_user_app();
             }
         }
     }
@@ -1150,8 +1230,7 @@ void render_desktop_context_menu(int single_click)
             } else if (act == 4) {
                 g_wallpaper_choice = (g_wallpaper_choice + 1) % 4;
             } else if (act == 5) {
-                toggle_settings_app();
-                win_bring_to_front(WIN_ID_SETTINGS);
+                toggle_settings_user_app();
             } else if (act == 6) {
                 toggle_taskmgr_user_app();
                 win_bring_to_front(WIN_ID_USER_APP);
@@ -1213,11 +1292,13 @@ void render_start_menu(int single_click)
     int menu_w = (req_w > 240) ? req_w : 240;
 
     int bar_y = (int)scr_height - TASKBAR_HEIGHT - TASKBAR_MARGIN_BOTTOM;
+    if (g_theme_id == 0) bar_y = 0;
+    else if (g_theme_id == 2) bar_y = (int)scr_height - TASKBAR_HEIGHT - 18;
     int menu_h = 56 + item_count * 27 + 10;
     int menu_x = TASKBAR_MARGIN_X + 4;
-    int base_menu_y = bar_y - menu_h - 8;
+    int base_menu_y = g_theme_id == 0 ? bar_y + TASKBAR_HEIGHT + 8 : bar_y - menu_h - 8;
     int slide_y = ((256 - ease_p) * 16) >> 8;
-    int menu_y = base_menu_y + slide_y;
+    int menu_y = g_theme_id == 0 ? base_menu_y - slide_y : base_menu_y + slide_y;
 
     if (s_menu_anim_t < 8 || !start_menu_open) single_click = 0;
 
@@ -1301,8 +1382,7 @@ void render_start_menu(int single_click)
                     win_bring_to_front(WIN_ID_CALC);
                     break;
                 case 5:
-                    toggle_settings_app();
-                    win_bring_to_front(WIN_ID_SETTINGS);
+                    toggle_settings_user_app();
                     break;
                 case 6:
                     sys_shutdown();
@@ -1419,6 +1499,7 @@ void blur_rect_buf(
     int radius
 )
 {
+    if (!g_liquid_glass) return;
     if (radius <= 0)
         return;
 
@@ -1698,6 +1779,19 @@ void render_layer_taskbar(int single_click)
     int bar_y = (int)scr_height - bar_h - bar_margin_bottom;
     int bar_r = TASKBAR_CORNER_R;
 
+    /* Three actual layouts: Paper uses a quiet top bar, Slate keeps the
+       floating dock, Linen narrows it into a centred shelf. */
+    if (g_theme_id == 0) {
+        bar_margin_bottom = 0; bar_margin_x = 0; bar_h = 40;
+        bar_w = (int)scr_width; bar_x = 0; bar_y = 0; bar_r = 0;
+    } else if (g_theme_id == 2) {
+        bar_margin_x = (int)scr_width / 5;
+        bar_w = (int)scr_width - bar_margin_x * 2;
+        bar_x = bar_margin_x;
+        bar_y = (int)scr_height - bar_h - 18;
+        bar_r = 18;
+    }
+
     int is_dark = g_dark_mode;
 
     draw_rounded_rect_alpha(bar_x - 3, bar_y + 3, bar_w + 6, bar_h + 4, bar_r + 2, 0x00000000, 35);
@@ -1709,6 +1803,9 @@ void render_layer_taskbar(int single_click)
         draw_rounded_rect_alpha(bar_x, bar_y, bar_w, bar_h, bar_r, 0x0014161C, 200);
         draw_rounded_rect_alpha(bar_x, bar_y, bar_w, bar_h, bar_r, 0x00FFFFFF, 22);
         draw_rounded_rect_alpha(bar_x + 4, bar_y + 1, bar_w - 8, 1, 0, 0x00FFFFFF, 45);
+    } else if (g_theme_id == 2) {
+        draw_rounded_rect_alpha(bar_x, bar_y, bar_w, bar_h, bar_r, 0x00FFF8EF, 238);
+        draw_rounded_rect_alpha(bar_x, bar_y, bar_w, bar_h, bar_r, 0x00A98262, 32);
     } else {
         draw_rounded_rect_alpha(bar_x, bar_y, bar_w, bar_h, bar_r, 0x00F0F2F6, 195);
         draw_rounded_rect_alpha(bar_x, bar_y, bar_w, bar_h, bar_r, 0x00FFFFFF, 120);
@@ -1793,7 +1890,9 @@ void render_layer_taskbar(int single_click)
         int icon_draw_x = cur_x + (tile_w - icon_inner_size) / 2;
         int icon_draw_y = tile_y + (tile_h - icon_inner_size) / 2;
 
-        if (dock_apps[i].bmp_data) {
+        if (dock_apps[i].ico_start && dock_apps[i].ico_end) {
+            draw_scaled_ico(dock_apps[i].ico_start, dock_apps[i].ico_end, icon_draw_x, icon_draw_y, icon_inner_size);
+        } else if (dock_apps[i].bmp_data) {
             draw_scaled_bmp_rounded(dock_apps[i].bmp_data, icon_draw_x, icon_draw_y,
                                     icon_inner_size, icon_inner_size, 6);
         } else {
@@ -2099,8 +2198,6 @@ void desktop_run(void)
 {
     serial_write_desktop("[DESKTOP] desktop_run entered. Starting 60 FPS compositor loop...\n");
 
-    serial_write_desktop("[DESKTOP] Native Desktop Active. Apps ready in /apps/*.kea\n");
-
     uint64_t next_frame_tick = timer_ticks();
     int frame_log_count = 0;
 
@@ -2114,6 +2211,7 @@ void desktop_run(void)
         poll_mouse();
         extern void net_poll(void);
         net_poll();
+        service_poll();
 
         int single_click =
             (

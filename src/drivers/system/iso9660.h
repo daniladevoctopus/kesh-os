@@ -16,6 +16,7 @@ typedef struct {
 typedef struct {
     int present;
     int drive_idx;
+    int block_device_id;
     char volume_label[33];
     uint32_t root_lba;
     uint32_t root_size;
@@ -23,10 +24,11 @@ typedef struct {
 } iso9660_info_t;
 
 int iso9660_init(void);
-int iso9660_probe(int drive_idx, iso9660_info_t *out_info);
+int iso9660_probe(int block_device_id, iso9660_info_t *out_info);
 
 int iso9660_list_dir(uint32_t lba, uint32_t dir_size, iso9660_entry_t *out_entries, int max_entries);
 int iso9660_read_file(uint32_t lba, uint32_t size, void *buf, int max_bytes);
+int iso9660_read_file_offset(uint32_t lba, uint32_t size, uint64_t offset, void *buf, int max_bytes);
 
 const iso9660_info_t* iso9660_get_primary_info(void);
 

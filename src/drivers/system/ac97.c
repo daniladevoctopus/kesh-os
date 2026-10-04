@@ -1,6 +1,7 @@
 // кодек ac97
 #include <stdint.h>
 #include <stdbool.h>
+#include "memory.h"
 
 #define PCI_CONFIG_ADDRESS 0xCF8
 #define PCI_CONFIG_DATA    0xCFC
@@ -38,8 +39,10 @@ typedef struct {
 static uint16_t nambar  = 0;
 static uint16_t nabmbar = 0;
 
-static ac97_bdl_entry_t bdl[32] __attribute__((aligned(16)));
-static uint8_t dma_buffer[65536] __attribute__((aligned(16)));
+static ac97_bdl_entry_t *bdl = 0;
+static uint8_t *dma_buffer = 0;
+static uint64_t bdl_phys = 0;
+static uint64_t dma_phys = 0;
 
 static uint32_t pci_read_config(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset) {
     uint32_t address = (uint32_t)((bus << 16) | (slot << 11) |
@@ -72,6 +75,17 @@ bool ac97_init(void) {
                 outw(nambar + 0x02, 0x0000);
                 outw(nambar + 0x18, 0x0000);
 
+                bdl_phys = pmm_alloc_page();
+                dma_phys = pmm_alloc_pages(16);
+                if (!bdl_phys || !dma_phys || bdl_phys > 0xFFFFFFFFULL || dma_phys > 0xFFFFFFFFULL) {
+                    if (bdl_phys) pmm_free_page(bdl_phys);
+                    if (dma_phys) pmm_free_pages(dma_phys, 16);
+                    bdl_phys = dma_phys = 0;
+                    return false;
+                }
+                bdl = (ac97_bdl_entry_t *)(bdl_phys + g_hhdm_offset);
+                dma_buffer = (uint8_t *)(dma_phys + g_hhdm_offset);
+
                 return true;
             }
         }
@@ -88,22 +102,23 @@ void ac97_set_volume(uint8_t volume) {
     outw(nambar + 0x18, val);
 }
 
-void ac97_play_pcm(const uint8_t *pcm_data, uint32_t length) {
-    if (!nabmbar || length == 0) return;
-    if (length > sizeof(dma_buffer)) length = sizeof(dma_buffer);
+int ac97_play_pcm(const uint8_t *pcm_data, uint32_t length) {
+    if (!nabmbar || !bdl || !dma_buffer || !pcm_data || length == 0) return -1;
+    if (length > 65536) length = 65536;
 
     for (uint32_t i = 0; i < length; i++) {
         dma_buffer[i] = pcm_data[i];
     }
 
-    bdl[0].phys_addr = (uint32_t)(unsigned long)&dma_buffer[0];
+    bdl[0].phys_addr = (uint32_t)dma_phys;
     bdl[0].samples   = (uint16_t)(length / 2);
     bdl[0].flags     = 0x8000;
 
     outb(nabmbar + 0x1B, 0x00);
     outb(nabmbar + 0x1B, 0x02);
 
-    outl(nabmbar + 0x10, (uint32_t)(unsigned long)&bdl[0]);
+    outl(nabmbar + 0x10, (uint32_t)bdl_phys);
     outb(nabmbar + 0x15, 0);
     outb(nabmbar + 0x1B, 0x01);
+    return (int)length;
 }

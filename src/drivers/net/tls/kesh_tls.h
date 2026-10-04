@@ -18,6 +18,9 @@ int kesh_https_get(const char *url, char *response_buf, size_t max_buf, int *out
 
 int kesh_fetch_url(const char *url, char *response_buf, size_t max_buf, int *out_status_code);
 int kesh_http_fetch(const char *url, char *response_buf, size_t max_buf, int *out_status_code);
+size_t kesh_tls_last_response_len(void);
+int kesh_tls_reload_trust_store(void);
+uint32_t kesh_tls_trust_store_generation(void);
 
 void kesh_tls_get_diag(uint32_t *ip, int *sent, int *recv, int *bsl_err, int *xdec_err, int *cert_bytes, int *pkey_st);
 

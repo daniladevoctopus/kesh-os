@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "pic.h"
+#include "input.h"
 
 #define PS2_DATA_PORT    0x60
 #define PS2_STATUS_PORT  0x64
@@ -178,6 +179,20 @@ void mouse_handle_byte(uint8_t data) {
             mouse_y = g_mouse.y;
             mouse_left_clicked = g_mouse.left_button ? 1 : 0;
             mouse_right_clicked = g_mouse.right_button ? 1 : 0;
+
+            extern void evdev_feed_mouse(int x, int y, int left, int right) __attribute__((weak));
+            if (evdev_feed_mouse) evdev_feed_mouse(mouse_x, mouse_y, mouse_left_clicked, mouse_right_clicked);
+
+            input_event_t input = {
+                .type = INPUT_EVENT_POINTER,
+                .pressed = 0,
+                .code = 0,
+                .modifiers = 0,
+                .x = g_mouse.x,
+                .y = g_mouse.y,
+                .buttons = (g_mouse.left_button ? 1 : 0) | (g_mouse.right_button ? 2 : 0) | (g_mouse.middle_button ? 4 : 0)
+            };
+            (void)input_push(&input);
             break;
     }
 }

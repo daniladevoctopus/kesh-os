@@ -47,7 +47,6 @@ user_window_t* uwindow_create(int w, int h, const char *title, uint64_t pml4_phy
     if (slot == -1) return NULL;
 
     user_window_t *win = &g_windows[slot];
-    win->active = 1;
     win->win_id = slot;
     win->is_desktop = is_desk;
     win->w = w;
@@ -82,7 +81,7 @@ user_window_t* uwindow_create(int w, int h, const char *title, uint64_t pml4_phy
     win->anim_state = is_desk ? 0 : 1;
     win->anim_t = 0;
     win->pml4_phys = pml4_phys;
-    win->user_fb_vaddr = USER_WINDOW_FB_VADDR;
+    win->user_fb_vaddr = USER_WINDOW_FB_VADDR + (uint64_t)slot * USER_WINDOW_FB_STRIDE;
     win->ev_head = 0;
     win->ev_tail = 0;
 
@@ -97,12 +96,21 @@ user_window_t* uwindow_create(int w, int h, const char *title, uint64_t pml4_phy
 
     uint64_t total_bytes = (uint64_t)w * (uint64_t)h * 4ULL;
     uint64_t num_pages = ((total_bytes + PAGE_SIZE - 1ULL) / PAGE_SIZE) + 4ULL;
+    if (num_pages * PAGE_SIZE > USER_WINDOW_FB_STRIDE) return NULL;
 
     uint64_t fb_phys = pmm_alloc_pages(num_pages);
     if (!fb_phys) return NULL;
 
     for (uint64_t p = 0; p < num_pages; p++) {
-        vmm_map_page(pml4_phys, USER_WINDOW_FB_VADDR + p * PAGE_SIZE, fb_phys + p * PAGE_SIZE, PTE_USER | PTE_WRITABLE);
+        if (vmm_map_page(pml4_phys, win->user_fb_vaddr + p * PAGE_SIZE,
+                         fb_phys + p * PAGE_SIZE, PTE_USER | PTE_WRITABLE | PTE_NO_EXECUTE) != 0) {
+            while (p > 0) {
+                --p;
+                vmm_unmap_page(pml4_phys, win->user_fb_vaddr + p * PAGE_SIZE, 0);
+            }
+            pmm_free_pages(fb_phys, num_pages);
+            return NULL;
+        }
     }
 
     vmm_switch_pml4(pml4_phys);
@@ -113,6 +121,7 @@ user_window_t* uwindow_create(int w, int h, const char *title, uint64_t pml4_phy
         win->framebuffer[i] = 0xFF1E1E22;
     }
 
+    win->active = 1;
     g_focused_win_id = slot;
     return win;
 }
@@ -124,10 +133,25 @@ void uwindow_destroy(int win_id) {
     if (g_focused_win_id == win_id) g_focused_win_id = -1;
 }
 
+void uwindow_destroy_process(uint64_t pml4_phys) {
+    for (int i = 0; i < MAX_USER_WINDOWS; i++) {
+        if (!g_windows[i].active || g_windows[i].pml4_phys != pml4_phys) continue;
+        uwindow_destroy(i);
+    }
+}
+
 user_window_t* uwindow_get(int win_id) {
     if (win_id < 0 || win_id >= MAX_USER_WINDOWS) return NULL;
     if (!g_windows[win_id].active) return NULL;
     return &g_windows[win_id];
+}
+
+user_window_t* uwindow_get_process_window(uint64_t pml4_phys) {
+    if (!pml4_phys) return NULL;
+    for (int i = 0; i < MAX_USER_WINDOWS; ++i) {
+        if (g_windows[i].active && g_windows[i].pml4_phys == pml4_phys) return &g_windows[i];
+    }
+    return NULL;
 }
 
 int uwindow_push_event(int win_id, uevent_t ev) {

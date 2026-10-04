@@ -1,4 +1,6 @@
 import os
+import shutil
+import sys
 
 DOOM_SRCS = [
     "am_map.c", "d_event.c", "d_items.c", "d_iwad.c", "d_loop.c", "d_main.c", "d_mode.c", "d_net.c",
@@ -19,10 +21,17 @@ DOOM_SRCS = [
 
 KERNEL_C_SRCS = [
     ("kernel/kernel.c", "build/kernel/kernel.o"),
+    ("kernel/cmd_mode.c", "build/kernel/cmd_mode.o"),
+    ("kernel/linux_syscall.c", "build/kernel/linux_syscall.o"),
+    ("kernel/unix_ipc.c", "build/kernel/unix_ipc.o"),
+    ("kernel/evdev.c", "build/kernel/evdev.o"),
+    ("kernel/drm_fb.c", "build/kernel/drm_fb.o"),
     ("kernel/gdt.c", "build/kernel/gdt.o"),
     ("kernel/syscall.c", "build/kernel/syscall.o"),
     ("kernel/memory.c", "build/kernel/memory.o"),
     ("kernel/process.c", "build/kernel/process.o"),
+    ("kernel/cpu.c", "build/kernel/cpu.o"),
+    ("kernel/apic.c", "build/kernel/apic.o"),
     ("kernel/elf.c", "build/kernel/elf.o"),
     ("kernel/uwindow.c", "build/kernel/uwindow.o"),
     ("kernel/vfs.c", "build/kernel/vfs.o"),
@@ -31,6 +40,20 @@ KERNEL_C_SRCS = [
     ("kernel/include/pic.c", "build/kernel/pic.o"),
     ("kernel/panic.c", "build/kernel/panic.o"),
     ("kernel/timer.c", "build/kernel/timer.o"),
+    ("kernel/random.c", "build/kernel/random.o"),
+    ("kernel/service.c", "build/kernel/service.o"),
+    ("kernel/tty.c", "build/kernel/tty.o"),
+    ("kernel/input.c", "build/kernel/input.o"),
+    ("kernel/socket.c", "build/kernel/socket.o"),
+    ("kernel/fd.c", "build/kernel/fd.o"),
+    ("kernel/ipc.c", "build/kernel/ipc.o"),
+    ("kernel/display.c", "build/kernel/display.o"),
+    ("kernel/block.c", "build/kernel/block.o"),
+    ("kernel/nvme.c", "build/kernel/nvme.o"),
+    ("kernel/gpt.c", "build/kernel/gpt.o"),
+    ("kernel/acpi.c", "build/kernel/acpi.o"),
+    ("kernel/log.c", "build/kernel/log.o"),
+    ("kernel/serial.c", "build/kernel/serial.o"),
     ("boot/loading/load_logo.c", "build/boot/loading/load_logo.o"),
     ("src/desktop.c", "build/src/desktop.o"),
     ("src/drivers/system/keyboard.c", "build/src/drivers/system/keyboard.o"),
@@ -49,6 +72,9 @@ KERNEL_C_SRCS = [
     ("src/drivers/net/virtio_net.c", "build/src/drivers/net/virtio_net.o"),
     ("src/drivers/net/net_stack.c", "build/src/drivers/net/net_stack.o"),
     ("src/drivers/net/tls/kesh_tls.c", "build/src/drivers/net/tls/kesh_tls.o"),
+    ("kpm/kea_verify.c", "build/kpm/kea_verify.o"),
+    ("kpm/trusted_keys.c", "build/kpm/trusted_keys.o"),
+    ("kpm/system_update.c", "build/kpm/system_update.o"),
     ("kpm/kpm_os.c", "build/kpm/kpm_os.o"),
     ("src/gui/apps/file/file_manager.c", "build/src/gui/apps/file/file_manager.o"),
     ("src/gui/apps/music/music_app.c", "build/src/gui/apps/music/music_app.o"),
@@ -80,24 +106,43 @@ ASM_SRCS = [
 for d in DOOM_SRCS:
     KERNEL_C_SRCS.append((f"src/gui/apps/doom/engine/{d}", f"build/src/gui/apps/doom/engine/{d.replace('.c', '.o')}"))
 
-toolchain_bin = "D:/keshos-toolchain/KeshBE/bin"
 def find_tool(name, env_key):
-    if os.environ.get(env_key):
-        return os.environ[env_key]
-    cand = os.path.join(toolchain_bin, f"{name}.exe")
-    if os.path.exists(cand):
-        return cand.replace("\\", "/")
+    explicit = os.environ.get(env_key)
+    if explicit:
+        return explicit.replace("\\", "/")
+
+    roots = []
+    if os.environ.get("KESHOS_TOOLCHAIN"):
+        root = os.environ["KESHOS_TOOLCHAIN"]
+        roots.extend([root, os.path.join(root, "bin")])
+    roots.extend([
+        "D:/keshos-toolchain/KeshBE/bin",
+        os.path.expanduser("~/.local/keshos-toolchain/bin"),
+    ])
+
+    exe_names = [name + ".exe", name]
+    for root in roots:
+        for exe in exe_names:
+            cand = os.path.join(root, exe)
+            if os.path.exists(cand):
+                return cand.replace("\\", "/")
+
+    found = shutil.which(name) or shutil.which(name + ".exe")
+    if found:
+        return found.replace("\\", "/")
     return name
 
 cc_cmd = find_tool("clang", "CC")
 cxx_cmd = find_tool("clang++", "CXX")
 ld_cmd = find_tool("ld.lld", "LD")
 ar_cmd = find_tool("llvm-ar", "AR")
+python_cmd = sys.executable.replace("\\", "/")
 
 ninja_content = f"""cc = {cc_cmd}
 cxx = {cxx_cmd}
 kernel_ld = {ld_cmd}
 ar = {ar_cmd}
+python = {python_cmd}
 
 cflags = --target=x86_64-unknown-elf -m64 -ffreestanding -fno-stack-protector -fno-pie -fno-pic -mno-red-zone -mcmodel=kernel -O2 -Wall -Wextra -Wno-unused -Wno-unused-parameter -Wno-pointer-bool-conversion -DNULL=0 -Isrc/gui/apps/doom/fs_include -Iinclude -Ikernel -Isrc -Ikernel/include -Isrc/drivers/net/bearssl/inc -Isrc/drivers/net/bearssl/src -Isrc/gui/apps/doom -Isrc/gui/apps/doom/engine -DDOOMGENERIC_RESX=320 -DDOOMGENERIC_RESY=200
 asm_cflags = --target=x86_64-unknown-elf -m64 -ffreestanding -fno-stack-protector -fno-pie -fno-pic -mno-red-zone
@@ -166,43 +211,59 @@ build build/userspace/browser.o: user_cc userspace/apps/browser/main.c
 build build/apps/browser.elf: user_link build/userspace/crt0.o build/userspace/kesh.o build/userspace/font.o build/userspace/browser.o | userspace/app.ld
 
 rule kea_pack
-  command = python tools/kea-pack.py --elf $in --out $out --name $app_name --ver 1.0.0 --author KeshOS --category $app_cat --desc $app_desc
+  command = $python tools/kea-pack.py --elf $in --out $out --name $app_name --ver 1.0.0 --author KeshOS --category $app_cat --desc $app_desc --perms $app_perms
   description = KEA_PACK $out
 
 build build/apps/notepad.kea: kea_pack build/apps/notepad.elf
   app_name = Notepad
   app_cat = Utilities
   app_desc = "Native text editor for KeshOS"
+  app_perms = 0xA
 
 build build/apps/explorer.kea: kea_pack build/apps/explorer.elf
   app_name = Explorer
   app_cat = System
   app_desc = "File manager for KeshOS"
+  app_perms = 0xA
 
 build build/apps/taskmgr.kea: kea_pack build/apps/taskmgr.elf
   app_name = TaskMgr
   app_cat = System
   app_desc = "Process manager and system monitor"
+  app_perms = 0xA
 
 build build/apps/paint.kea: kea_pack build/apps/paint.elf
   app_name = Paint
   app_cat = Graphics
   app_desc = "Native drawing and sketching app"
+  app_perms = 0xA
 
 build build/apps/shell.kea: kea_pack build/apps/shell.elf
   app_name = Shell
   app_cat = System
   app_desc = "Native modular desktop shell"
+  app_perms = 0xA
 
 build build/apps/settings.kea: kea_pack build/apps/settings.elf
   app_name = Settings
   app_cat = System
   app_desc = "System Settings for KeshOS"
+  app_perms = 0xA
 
 build build/apps/browser.kea: kea_pack build/apps/browser.elf
   app_name = Browser
   app_cat = Internet
   app_desc = "Native KeshOS web client"
+  app_perms = 0xB
+
+build build/userspace/installer.o: user_cc userspace/apps/installer/main.c
+build build/apps/installer.elf: user_link build/userspace/crt0.o build/userspace/kesh.o build/userspace/font.o build/userspace/installer.o | userspace/app.ld
+
+build build/apps/installer.kea: kea_pack build/apps/installer.elf
+  app_name = KeshInstaller
+  app_cat = System
+  app_desc = "Live KeshOS installer"
+  app_perms = 0xA
 
 build build/userspace/about.o: user_cc userspace/apps/about/main.c
 build build/apps/about.elf: user_link build/userspace/crt0.o build/userspace/kesh.o build/userspace/font.o build/userspace/about.o | userspace/app.ld
@@ -211,6 +272,7 @@ build build/apps/about.kea: kea_pack build/apps/about.elf
   app_name = About
   app_cat = System
   app_desc = "About KeshOS system information"
+  app_perms = 0xA
 
 """
 
@@ -239,16 +301,25 @@ for src, obj in KERNEL_C_SRCS:
 
 for src, obj in ASM_SRCS:
     if "resources.S" in src:
-        ninja_content += f"build {obj}: kernel_asm {src} | build/apps/notepad.kea build/apps/explorer.kea build/apps/taskmgr.kea build/apps/paint.kea build/apps/shell.kea build/apps/settings.kea build/apps/about.kea build/apps/browser.kea\n"
+        ninja_content += f"build {obj}: kernel_asm {src} | build/apps/notepad.kea build/apps/explorer.kea build/apps/taskmgr.kea build/apps/paint.kea build/apps/shell.kea build/apps/settings.kea build/apps/about.kea build/apps/browser.kea build/apps/installer.kea\n"
     else:
         ninja_content += f"build {obj}: kernel_asm {src}\n"
     all_objs.append(obj)
 
 ninja_content += f"\nbuild build/kernel.elf: link {' '.join(all_objs)} build/libbearssl.a\n"
-ninja_content += "default build/apps/notepad.kea build/apps/explorer.kea build/apps/taskmgr.kea build/apps/paint.kea build/apps/shell.kea build/apps/settings.kea build/apps/about.kea build/apps/browser.kea build/kernel.elf\n"
+ninja_content += f"""
+rule iso
+  command = {python_cmd} tools/make_iso.py
+  description = ISO $out
+
+build build/keshos.iso: iso build/kernel.elf build/apps/notepad.elf build/apps/explorer.elf build/apps/settings.elf build/apps/about.elf build/apps/installer.elf build/apps/notepad.kea build/apps/explorer.kea build/apps/taskmgr.kea build/apps/paint.kea build/apps/shell.kea build/apps/settings.kea build/apps/about.kea build/apps/browser.kea build/apps/installer.kea | boot/limine/limine-bios-cd.bin boot/limine/limine-uefi-cd.bin boot/limine/limine-bios.sys boot/limine/BOOTX64.EFI boot/limine/limine.conf boot/limine/limine.cfg boot/wm.conf
+
+build iso: phony build/keshos.iso
+
+default build/apps/notepad.kea build/apps/explorer.kea build/apps/taskmgr.kea build/apps/paint.kea build/apps/shell.kea build/apps/settings.kea build/apps/about.kea build/apps/browser.kea build/apps/installer.kea build/kernel.elf
+"""
 
 with open("build.ninja", "w", encoding="utf-8") as f:
     f.write(ninja_content)
 
 print(f"Generated build.ninja with {len(all_objs)} kernel objs, {len(bearssl_objs)} BearSSL objs.")
-

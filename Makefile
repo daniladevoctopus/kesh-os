@@ -1,12 +1,9 @@
-# ==========================================
-# KeshOS Makefile (Unified Build Automation)
-# ==========================================
-
-PYTHON ?= python
+# KeshOS unified build automation
+PYTHON ?= python3
 NINJA ?= ninja
 QEMU ?= qemu-system-x86_64
 
-.PHONY: all ninja iso run qemu clean
+.PHONY: all ninja iso qemu run clean
 
 all: ninja
 
@@ -14,21 +11,13 @@ ninja:
 	@$(PYTHON) generate_ninja.py
 	@$(NINJA)
 
-iso: ninja
-	@$(PYTHON) tools/make_iso.py
+iso:
+	@./build.sh
 
 qemu: iso
-	$(QEMU) \
-		-cdrom build/keshos.iso \
-		-m 2048 \
-		-vga std \
-		-netdev user,id=net0 -device e1000,netdev=net0 \
-		-serial stdio \
-		-no-shutdown \
-		-no-reboot
+	@$(QEMU) -cdrom build/keshos.iso -m 2048 -smp 2 -vga std -display gtk -serial stdio -no-reboot -no-shutdown
 
 run: qemu
 
 clean:
-	@$(NINJA) -t clean || true
-	@powershell -Command "Remove-Item -Recurse -Force build, ready -ErrorAction SilentlyContinue"
+	rm -rf build ready

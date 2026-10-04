@@ -42,6 +42,8 @@ typedef struct {
 
 #define ELFCLASS64 2
 #define ELFDATA2LSB 1
+#define EV_CURRENT 1
+#define ELFOSABI_SYSV 0
 #define ET_EXEC 2
 #define ET_DYN  3
 #define EM_X86_64 62
@@ -53,6 +55,7 @@ typedef struct {
 #define PT_NOTE    4
 #define PT_SHLIB   5
 #define PT_PHDR    6
+#define PT_TLS     7
 
 #define PF_X 0x1
 #define PF_W 0x2

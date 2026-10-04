@@ -1,6 +1,7 @@
 // таблица прерываний idt чтоб не крашилось
 #include "idt.h"
 #include "pic.h"
+#include "../log.h"
 
 static struct idt_entry idt[256];
 static struct idtr idtr;
@@ -56,15 +57,20 @@ static void idt_install_irq_handlers(void) {
     }
 }
 
+void idt_load_cpu(void) {
+    asm volatile ("lidt %0" : : "m"(idtr));
+}
+
 void idt_init(void) {
+    KLOG_ENTER("idt");
     idtr.base = (uint64_t)&idt[0];
     idtr.limit = (uint16_t)sizeof(struct idt_entry) * 256 - 1;
 
     idt_install_exception_handlers();
     idt_install_irq_handlers();
-
     pic_remap();
-
-    asm volatile ("lidt %0" : : "m"(idtr));
-    asm volatile ("sti");
+    idt_load_cpu();
+    KLOG_DEBUG("idt", "IDT loaded base=%p limit=%u irq_vectors=0x20..0x2F",
+               (void *)idtr.base, (unsigned)idtr.limit);
+    KLOG_LEAVE("idt", 0);
 }

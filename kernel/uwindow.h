@@ -8,6 +8,7 @@
 #define MAX_USER_WINDOWS 8
 #define USER_WINDOW_HEADER_H 30
 #define USER_WINDOW_FB_VADDR 0x50000000ULL
+#define USER_WINDOW_FB_STRIDE (16ULL * 1024ULL * 1024ULL)
 
 #define EVENT_NONE       0
 #define EVENT_MOUSE_MOVE 1
@@ -51,7 +52,12 @@ typedef struct user_window {
 void uwindow_init(void);
 user_window_t* uwindow_create(int w, int h, const char *title, uint64_t pml4_phys);
 void uwindow_destroy(int win_id);
+void uwindow_destroy_process(uint64_t pml4_phys);
 user_window_t* uwindow_get(int win_id);
+/* Userspace currently receives a framebuffer pointer, not a window handle.
+ * Resolve the caller's sole window by its address-space until the public GUI
+ * ABI grows explicit handles. */
+user_window_t* uwindow_get_process_window(uint64_t pml4_phys);
 int uwindow_push_event(int win_id, uevent_t ev);
 int uwindow_pop_event(int win_id, uevent_t *out_ev);
 void uwindow_feed_key(char c);

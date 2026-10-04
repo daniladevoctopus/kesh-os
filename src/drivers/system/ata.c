@@ -14,7 +14,7 @@
 #define ATA_CMD_PACKET          0xA0
 #define ATA_CMD_IDENTIFY_PACKET 0xA1
 
-#define ATA_TIMEOUT 30000u
+#define ATA_TIMEOUT 2000000u
 
 static inline void outb(uint16_t port, uint8_t val) {
     __asm__ volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
@@ -67,6 +67,7 @@ static int ata_wait_not_busy(uint16_t io_base) {
     for (uint32_t i = 0; i < ATA_TIMEOUT; ++i) {
         uint8_t st = inb(io_base + 7);
         if (!(st & ATA_SR_BSY)) return 1;
+        __asm__ volatile("pause");
     }
     return 0;
 }
@@ -74,11 +75,16 @@ static int ata_wait_not_busy(uint16_t io_base) {
 static int ata_wait_drq(uint16_t io_base) {
     for (uint32_t i = 0; i < ATA_TIMEOUT; ++i) {
         uint8_t st = inb(io_base + 7);
+        if (st & ATA_SR_BSY) {
+            __asm__ volatile("pause");
+            continue;
+        }
         if (st & ATA_SR_ERR) {
             (void)inb(io_base + 1); 
             return 0;
         }
         if (st & ATA_SR_DRQ) return 1;
+        __asm__ volatile("pause");
     }
     return 0;
 }
@@ -362,6 +368,17 @@ int ata_write_sectors(uint32_t lba, uint8_t count, const uint8_t* buf) {
         return ata_write_sectors_drive(s_primary_hdd, lba, count, buf);
     }
     return 0;
+}
+
+int ata_flush_drive(int drive_idx) {
+    if (drive_idx < 0 || drive_idx >= ATA_MAX_DRIVES || !s_drives[drive_idx].present || s_drives[drive_idx].type != ATA_TYPE_HDD) return 0;
+    const ata_device_t *drive = &s_drives[drive_idx];
+    if (!ata_wait_not_busy(drive->io_base)) return 0;
+    outb(drive->io_base + 6, drive->drive_sel);
+    ata_delay_400ns(drive->ctrl_base);
+    outb(drive->io_base + 7, ATA_CMD_CACHE_FLUSH);
+    if (!ata_wait_not_busy(drive->io_base)) return 0;
+    return !(inb(drive->io_base + 7) & 1U);
 }
 
 static int atapi_send_packet(const ata_device_t *d, const uint8_t *cdb, uint16_t byte_count, uint8_t *buf, int is_write) {

@@ -1,3 +1,0 @@
-@echo off
-echo [*] Starting KeshOS in QEMU...
-powershell -ExecutionPolicy Bypass -File run-qemu.ps1

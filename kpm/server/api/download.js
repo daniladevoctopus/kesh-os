@@ -1,40 +1,34 @@
 const fs = require('fs');
 const path = require('path');
 
+const valid = value => typeof value === 'string' && /^[a-z0-9_-]{1,48}$/.test(value);
+const validVersion = value => typeof value === 'string' && /^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][a-z0-9.-]+)?$/.test(value);
+
 module.exports = (req, res) => {
-  const pkg = req.query.pkg || path.basename(req.url.split('?')[0]);
-  const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'Unknown IP';
-  const userAgent = req.headers['user-agent'] || 'Unknown Client';
-
-  console.log(`[KPM-LIVE] >>> INCOMING DOWNLOAD: "${pkg}" from IP [${clientIp}]`);
-  console.log(`[KPM-LIVE] Client User-Agent: ${userAgent}`);
-
-  if (!pkg) {
-    console.error(`[KPM-LIVE] [X] 400 Bad Request: Missing package parameter.`);
-    return res.status(400).json({ error: "Missing package name" });
-  }
-
-  // Look for package in local packages directory
-  const filePath = path.join(process.cwd(), 'packages', pkg);
-
-  if (!fs.existsSync(filePath)) {
-    console.error(`[KPM-LIVE] [X] 404 Not Found: Package "${pkg}" does not exist in registry.`);
-    return res.status(404).json({ error: `Package ${pkg} not found` });
-  }
-
+  if (req.method === 'OPTIONS') return res.status(204).end();
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  let id = String(req.query.pkg || '').toLowerCase();
+  if (id.endsWith('.kea')) id = id.slice(0, -4);
+  if (!valid(id)) return res.status(400).json({ error: 'Invalid package id' });
   try {
-    const fileData = fs.readFileSync(filePath);
-    console.log(`[KPM-LIVE] [√] 200 OK: Successfully streaming "${pkg}" (${fileData.length} bytes) to [${clientIp}]`);
-
+    const index = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'index-v2.json'), 'utf8'));
+    const candidates = index.packages.filter(item => item.id === id);
+    const version = req.query.version || (candidates.length ? candidates[candidates.length - 1].version : '');
+    if (!validVersion(version)) return res.status(404).json({ error: 'Package not found' });
+    const metadata = candidates.find(item => item.version === version);
+    if (!metadata) return res.status(404).json({ error: 'Package not found' });
+    const filePath = path.join(process.cwd(), 'packages', id, version, `${id}.kea`);
+    const root = path.join(process.cwd(), 'packages') + path.sep;
+    if (!filePath.startsWith(root) || !fs.existsSync(filePath)) return res.status(404).json({ error: 'Package not found' });
+    const stat = fs.statSync(filePath);
+    if (stat.size !== metadata.size) return res.status(500).json({ error: 'Repository package size mismatch' });
     res.setHeader('Content-Type', 'application/octet-stream');
-    res.setHeader('Content-Disposition', `attachment; filename="${pkg}"`);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-
-    return res.status(200).send(fileData);
-  } catch (err) {
-    console.error(`[KPM-LIVE] [X] 500 Server Error: ${err.message}`);
-    return res.status(500).json({ error: "Internal Server Error" });
+    res.setHeader('Content-Disposition', `attachment; filename="${id}-${version}.kea"`);
+    res.setHeader('Content-Length', stat.size);
+    res.setHeader('ETag', `"sha256-${metadata.sha256}"`);
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    return fs.createReadStream(filePath).pipe(res);
+  } catch (error) {
+    return res.status(500).json({ error: 'Repository unavailable' });
   }
 };

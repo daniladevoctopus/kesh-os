@@ -1,0 +1,10 @@
+module KeshOS.Shell
+singleton Theme 1.0 Theme.qml
+Main 1.0 Main.qml
+Wallpaper 1.0 Wallpaper.qml
+DesktopView 1.0 DesktopView.qml
+Panel 1.0 Panel.qml
+KickoffMenu 1.0 KickoffMenu.qml
+WindowFrame 1.0 WindowFrame.qml
+AboutDialog 1.0 AboutDialog.qml
+ExplorerDialog 1.0 ExplorerDialog.qml

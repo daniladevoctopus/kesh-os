@@ -1,5 +1,6 @@
 // проводник на c++
 #include "kesh.h"
+#include "kesh_ico.h"
 
 inline void* operator new(size_t, void* p) noexcept { return p; }
 inline void* operator new[](size_t, void* p) noexcept { return p; }
@@ -7,6 +8,9 @@ inline void operator delete(void*, void*) noexcept {}
 inline void operator delete[](void*, void*) noexcept {}
 
 namespace Kesh {
+
+class ExplorerApp;
+static ExplorerApp *volatile g_explorer_app = nullptr;
 
 static int str_len(const char *s) {
     if (!s) return 0;
@@ -194,6 +198,17 @@ public:
 
     inline static bool s_dark_mode = true;
     inline static int s_accent_color = 0;
+    inline static uint8_t s_icon_data[3][10000];
+    inline static kesh_ico_image_t s_icons[3];
+    inline static int s_icon_ready[3];
+    static void load_icons() {
+        const char *paths[3] = { "/icons/explorer.ico", "/icons/folder.ico", "/icons/file.ico" };
+        for (int i = 0; i < 3; ++i) s_icon_ready[i] = kesh_ico_load_vfs(paths[i], s_icon_data[i], sizeof(s_icon_data[i]), &s_icons[i]) == 0;
+    }
+    static void draw_icon(uint32_t *fb, int index, int x, int y, int size, uint32_t fallback) {
+        if (index >= 0 && index < 3 && s_icon_ready[index]) kesh_ico_draw(fb, WIN_W, x, y, size, &s_icons[index]);
+        else kesh_draw_rounded_rect(fb, WIN_W, x, y, size, size, size / 5, fallback);
+    }
     static void set_dark_mode(bool dark) { s_dark_mode = dark; }
     static void set_accent_color(int acc) { s_accent_color = acc; }
     static uint32_t get_accent() {
@@ -227,8 +242,7 @@ public:
     }
 
     static void render_sidebar_header(uint32_t *fb) {
-        kesh_draw_rounded_rect(fb, WIN_W, 16, 12, 26, 26, 6, get_accent());
-        kesh_draw_folder_icon(fb, WIN_W, 19, 15, 20);
+        draw_icon(fb, 0, 14, 10, 30, get_accent());
         draw_string("Dolphin", 50, 13, s_dark_mode ? 0xFFFFFFFF : 0xFF1D1D1F, fb, WIN_W);
         draw_string("File Manager", 50, 26, s_dark_mode ? 0xFF7E8494 : 0xFF6E7382, fb, WIN_W);
     }
@@ -378,9 +392,9 @@ public:
             int icon_y = y + 12;
 
             if (items[i].is_dir) {
-                kesh_draw_folder_icon(fb, WIN_W, icon_cx - 16, icon_y, 32);
+                draw_icon(fb, 1, icon_cx - 16, icon_y, 32, 0xFFE4BC65);
             } else {
-                kesh_draw_file_icon(fb, WIN_W, icon_cx - 14, icon_y, 28, items[i].badge_color);
+                draw_icon(fb, 2, icon_cx - 14, icon_y, 28, items[i].badge_color);
             }
 
             int tw = font_text_width(items[i].name);
@@ -428,9 +442,9 @@ public:
             }
 
             if (items[i].is_dir) {
-                kesh_draw_folder_icon(fb, WIN_W, content_x + 8, row_y + 4, 18);
+                draw_icon(fb, 1, content_x + 8, row_y + 4, 18, 0xFFE4BC65);
             } else {
-                kesh_draw_file_icon(fb, WIN_W, content_x + 8, row_y + 4, 16, items[i].badge_color);
+                draw_icon(fb, 2, content_x + 8, row_y + 4, 16, items[i].badge_color);
             }
 
             uint32_t row_txt = is_selected ? (s_dark_mode ? 0xFFFFFFFF : 0xFF0A84FF) : (s_dark_mode ? 0xFFDFE2EB : 0xFF1D1D1F);
@@ -560,11 +574,13 @@ public:
         m_item_count = 0;
         m_filtered_count = 0;
 
-        static kesh_vfs_entry_t entries[128];
-        int count = kesh_vfs_list(m_current_path, entries, 128);
+        /* SYS_VFS_LIST has a bounded ABI buffer.  Asking for 128 made the
+         * kernel reject the call and rendered every directory as empty. */
+        static kesh_vfs_entry_t entries[64];
+        int count = kesh_vfs_list(m_current_path, entries, 64);
         if (count < 0) count = 0;
 
-        for (int i = 0; i < count && i < 128; i++) {
+        for (int i = 0; i < count && i < 64; i++) {
             m_items[m_item_count++].init(entries[i].name, entries[i].is_dir != 0, entries[i].size);
         }
 
@@ -762,13 +778,15 @@ public:
         uint32_t *fb = kesh_create_window(DolphinRenderer::WIN_W, DolphinRenderer::WIN_H, "Dolphin");
         if (!fb) return;
 
+        DolphinRenderer::load_icons();
         do_full_refresh();
 
         bool running = true;
         kesh_event_t ev;
 
         while (running) {
-            render(fb);
+            ExplorerApp *app = g_explorer_app;
+            app->render(fb);
             kesh_update_window(0);
 
             while (kesh_poll_event(0, &ev)) {
@@ -776,11 +794,11 @@ public:
                     running = false;
                     break;
                 } else if (ev.type == EVENT_MOUSE_MOVE) {
-                    handle_mouse_move(ev.mx, ev.my);
+                    app->handle_mouse_move(ev.mx, ev.my);
                 } else if (ev.type == EVENT_MOUSE_DOWN) {
-                    handle_mouse_down(ev.mx, ev.my, ev.btn);
+                    app->handle_mouse_down(ev.mx, ev.my, ev.btn);
                 } else if (ev.type == EVENT_KEY_DOWN) {
-                    handle_key_down(ev.key);
+                    app->handle_key_down(ev.key);
                 }
             }
 
@@ -1039,6 +1057,7 @@ private:
 extern "C" int main(int argc, char **argv) {
     (void)argc; (void)argv;
     static Kesh::ExplorerApp app;
+    Kesh::g_explorer_app = &app;
     app.run();
     return 0;
 }

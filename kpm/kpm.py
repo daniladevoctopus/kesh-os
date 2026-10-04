@@ -16,6 +16,7 @@ import argparse
 import urllib.request
 import urllib.error
 from pathlib import Path
+from security import verify_package
 
 KPM_VERSION = "1.0.0-PRO"
 DEFAULT_REPO_URL = "https://kesh-kpm.vercel.app"
@@ -99,34 +100,7 @@ def ensure_download_dir():
     return DOWNLOADS_KPM_DIR
 
 def parse_kea_header(data: bytes):
-    if len(data) < 244:
-        return None
-    magic = struct.unpack_from("<I", data, 0)[0]
-    if magic != 0x0141454B:  # "KEA\1"
-        return None
-    
-    hdr_fmt = "<IIHH32s16s32s16s64sIIIHHQQQI8I"
-    try:
-        fields = struct.unpack_from(hdr_fmt, data, 0)
-        name = fields[4].split(b'\x00')[0].decode('utf-8', errors='replace')
-        version = fields[5].split(b'\x00')[0].decode('utf-8', errors='replace')
-        author = fields[6].split(b'\x00')[0].decode('utf-8', errors='replace')
-        category = fields[7].split(b'\x00')[0].decode('utf-8', errors='replace')
-        description = fields[8].split(b'\x00')[0].decode('utf-8', errors='replace')
-        entry_pt = fields[16]
-        crc = fields[17]
-        return {
-            "name": name,
-            "version": version,
-            "author": author,
-            "category": category,
-            "description": description,
-            "entry_point": hex(entry_pt),
-            "crc": hex(crc),
-            "size": len(data)
-        }
-    except Exception:
-        return None
+    return verify_package(data)
 
 def fetch_packages_catalog():
     """Fetch catalog from Vercel Serverless API (/api/catalog)."""
@@ -239,13 +213,14 @@ def cmd_install(pkg_name):
     print_banner()
     dest_dir = ensure_download_dir()
     dest_path = dest_dir / pkg_name
+    pending_path = dest_dir / (pkg_name + ".part")
 
     print(f"{C.BOLD}┌─ INITIATING PACKAGE INSTALLATION ────────────────────────────┐{C.RESET}")
     print(f"{C.BOLD}│{C.RESET}  Package:   {C.CYAN}{C.BOLD}{pkg_name:<47}{C.RESET}{C.BOLD}│{C.RESET}")
     print(f"{C.BOLD}│{C.RESET}  Location:  {C.GRAY}{str(dest_path):<47}{C.RESET}{C.BOLD}│{C.RESET}")
     print(f"{C.BOLD}└──────────────────────────────────────────────────────────────┘{C.RESET}\n")
 
-    data = download_package_web(pkg_name, dest_path)
+    data = download_package_web(pkg_name, pending_path)
 
     if not data:
         print(f"\n{C.RED}[FAILED] Package '{pkg_name}' could not be downloaded via HTTPS.{C.RESET}")
@@ -256,6 +231,7 @@ def cmd_install(pkg_name):
     info = parse_kea_header(data)
 
     if info:
+        os.replace(pending_path, dest_path)
         print(f"\n{C.GREEN}{C.BOLD}╔══════════════════════════════════════════════════════════════╗{C.RESET}")
         print(f"{C.GREEN}{C.BOLD}║  PACKAGE VERIFIED: {info['name']:<41} ║{C.RESET}")
         print(f"{C.GREEN}{C.BOLD}╠══════════════════════════════════════════════════════════════╣{C.RESET}")
@@ -269,9 +245,13 @@ def cmd_install(pkg_name):
         print(f"{C.GREEN}{C.BOLD}║{C.RESET}  Package Size: {C.WHITE}{info['size']/1024:.1f} KB{' '*36}{C.RESET}{C.GREEN}{C.BOLD}║{C.RESET}")
         print(f"{C.GREEN}{C.BOLD}╚══════════════════════════════════════════════════════════════╝{C.RESET}")
         print(f"\n{C.GREEN}[SUCCESS] Installed to: {dest_path}{C.RESET}\n")
-    else:
-        print(f"\n{C.GREEN}[SUCCESS] Downloaded to: {dest_path} ({len(data)/1024:.1f} KB){C.RESET}\n")
-    return 0
+        return 0
+    try:
+        pending_path.unlink()
+    except FileNotFoundError:
+        pass
+    print(f"\n{C.RED}[FAILED] Package signature or payload is invalid; transaction rolled back.{C.RESET}\n")
+    return 1
 
 def cmd_list():
     print_banner()

@@ -1,0 +1,35 @@
+{
+  "schema": 2,
+  "name": "KeshOS Package Registry",
+  "updated_at": "2026-09-30T19:11:22.788616+00:00",
+  "key_id": "ce2514f720d3e5fd341e7bd96b83f99e",
+  "packages": [
+    {
+      "id": "explorer",
+      "name": "Dolphin",
+      "version": "1.0.0",
+      "author": "SneakDeak Tech",
+      "category": "System",
+      "description": "Native KeshOS file manager",
+      "size": 65632,
+      "sha256": "3a03a2050291d454bca2c3ad249d0506746d4231f965a8c998b95d6006ccf097",
+      "key_id": "ce2514f720d3e5fd341e7bd96b83f99e",
+      "filename": "explorer.kea",
+      "download_url": "/api/download?pkg=explorer&version=1.0.0"
+    },
+    {
+      "id": "notepad",
+      "name": "Notepad",
+      "version": "1.0.0",
+      "author": "SneakDeak Tech",
+      "category": "Utilities",
+      "description": "Native KeshOS text editor",
+      "size": 47200,
+      "sha256": "1edc4b224b0f4abc5879aacf1144865a447769ead01ff695c914d6a9f4994850",
+      "key_id": "ce2514f720d3e5fd341e7bd96b83f99e",
+      "filename": "notepad.kea",
+      "download_url": "/api/download?pkg=notepad&version=1.0.0"
+    }
+  ],
+  "index_sha256": "8dd3504425e41d03b25c7e6f6b94a6f66d84dbc7def4f7eeecac369cd2fa7494"
+}

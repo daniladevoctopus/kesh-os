@@ -147,9 +147,11 @@ irq_common_stub:
 .globl process_switch_to_user
 .globl g_active_user_context
 .globl g_syscall_should_yield
+.globl g_syscall_user_rip
 .section .data
 .align 16
 g_syscall_user_rsp: .quad 0
+g_syscall_user_rip: .quad 0
 g_active_user_context: .quad 0
 g_syscall_should_yield: .byte 0
 .align 8
@@ -158,6 +160,7 @@ g_kernel_compositor_cr3: .quad 0
 .text
 syscall_entry_stub:
     movq %rsp, g_syscall_user_rsp(%rip)
+    movq %rcx, g_syscall_user_rip(%rip)
     movq g_syscall_kernel_stack_top(%rip), %rsp
     pushq %rcx
     pushq %r11
@@ -173,11 +176,17 @@ syscall_entry_stub:
     pushq %r8
     pushq %r9
     pushq %r10
-    movq %r10, %rcx
-    movq %rsi, %rdx
-    movq %rdi, %rsi
     movq %rax, %rdi
+    movq 40(%rsp), %rsi
+    movq 32(%rsp), %rdx
+    movq 24(%rsp), %rcx
+    movq 0(%rsp), %r8
+    movq 16(%rsp), %r9
+    subq $16, %rsp
+    movq 24(%rsp), %rax
+    movq %rax, 0(%rsp)
     call syscall_dispatcher
+    addq $16, %rsp
     cmpb $0, g_syscall_should_yield(%rip)
     jne .handle_syscall_yield
     popq %r10

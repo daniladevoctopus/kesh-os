@@ -2,7 +2,8 @@
   "version": 2,
   "rewrites": [
     { "source": "/packages.json", "destination": "/api/catalog" },
-    { "source": "/packages/:pkg*", "destination": "/api/download?pkg=:pkg*" }
+    { "source": "/index-v2.json", "destination": "/api/catalog" },
+    { "source": "/packages/:pkg", "destination": "/api/download?pkg=:pkg" }
   ],
   "headers": [
     {

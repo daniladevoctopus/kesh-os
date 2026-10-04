@@ -1,6 +1,7 @@
 // клава ps/2, считываем сканкоды
 #include "keyboard.h"
 #include "pic.h"      
+#include "input.h"
 #include <stdint.h>
 
 #define KBD_DATA_PORT   0x60
@@ -57,6 +58,14 @@ static void queue_push(uint8_t code, uint8_t ext, uint8_t pressed) {
     e->extended = ext;
     e->pressed  = pressed;
     e->mods     = current_mods();
+    input_event_t input = {
+        .type = INPUT_EVENT_KEY,
+        .pressed = pressed,
+        .code = code,
+        .modifiers = e->mods,
+        .x = 0, .y = 0, .buttons = 0
+    };
+    (void)input_push(&input);
     __asm__ volatile ("" ::: "memory");
     q_head = next;
 }
@@ -143,6 +152,10 @@ int keyboard_poll_event(kbd_event_t *ev) {
     *ev = queue[q_tail];
     __asm__ volatile ("" ::: "memory");
     q_tail = (q_tail + 1) % KBD_QUEUE_SIZE;
+
+    extern void evdev_feed_key(uint8_t scancode, int pressed, int extended) __attribute__((weak));
+    if (evdev_feed_key) evdev_feed_key(ev->scancode, ev->pressed, ev->extended);
+
     return 1;
 }
 

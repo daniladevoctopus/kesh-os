@@ -165,7 +165,7 @@ make qemu
 - [x] Native `.kea` packaging pipeline and runtime execution
 - [x] **Release Candidate 1 (RC1) Public ISO Build**
 - [ ] Read/Write Ext4 filesystem persistence with extent tree parsing
-- [ ] Graphical LiveCD installer for bare-metal targets
+- [~] Graphical LiveCD installer: FAT32 preflight and persistent install-plan save are available; GPT partitioning, bootloader installation, ext4 and Btrfs support remain in progress
 - [ ] OTA updates via web-hosted manifest & A/B slot fallback
 - [ ] *Long-term:* POSIX CLI binary compatibility layer
 

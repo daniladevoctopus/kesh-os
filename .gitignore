@@ -10,14 +10,21 @@ modules/
 .vs
 .vscode
 .kilo/
+__pycache__/
 
 *.log
+serial.log
+test_serial.log
+qemu-*.log
+/.kpm-private/
 *.ppm
 *.qcow2
 *.iso
 *.bin
 *.zip
 *.exe
+*.ksu
+kpm/server/system/
 !boot/limine/*.bin
 !boot/limine/*.sys
 !boot/limine/*.EFI
@@ -32,3 +39,25 @@ website/
 .ninja_log
 BUILD_OUTPUTS.txt
 tools/make_zip.ps1
+
+# Userland build outputs and staging
+ports_build/
+ports_bin/
+ready/
+toolchain/
+
+# KDE Plasma experiments (as requested: do not push)
+plasma-desktop/
+
+# Third-party heavy vendor trees in ports (only commit our custom ports code & build scripts)
+ports/llvm-project-*/
+ports/qtbase-*/
+ports/qtdeclarative-*/
+ports/musl-*/
+ports/musl-*.tar.gz
+ports/freetype2/
+ports/libffi/
+ports/libxkbcommon/
+ports/pixman/
+ports/wayland/
+ports/zlib/

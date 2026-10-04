@@ -164,10 +164,12 @@ global syscall_entry_stub
 global process_switch_to_user
 global g_active_user_context
 global g_syscall_should_yield
+global g_syscall_user_rip
 
 section .data
 align 16
 g_syscall_user_rsp: dq 0
+g_syscall_user_rip: dq 0
 g_active_user_context: dq 0
 g_syscall_should_yield: db 0
 g_kernel_compositor_rsp: dq 0
@@ -177,6 +179,7 @@ section .text
 syscall_entry_stub:
 
     mov [rel g_syscall_user_rsp], rsp
+    mov [rel g_syscall_user_rip], rcx
     mov rsp, [rel g_syscall_kernel_stack_top]
 
     push rcx             
@@ -194,11 +197,18 @@ syscall_entry_stub:
     push r9              
     push r10             
 
-    mov rcx, r10         
-    mov rdx, rsi         
-    mov rsi, rdi         
-    mov rdi, rax         
+    mov r11, rax
+    sub rsp, 16
+    mov rax, [rsp + 16 + 8]
+    mov [rsp], rax
+    mov r9, [rsp + 16 + 16]
+    mov r8, [rsp + 16 + 0]
+    mov rcx, [rsp + 16 + 24]
+    mov rdx, [rsp + 16 + 32]
+    mov rsi, [rsp + 16 + 40]
+    mov rdi, r11
     call syscall_dispatcher
+    add rsp, 16
 
     cmp byte [rel g_syscall_should_yield], 0
     jne .handle_syscall_yield

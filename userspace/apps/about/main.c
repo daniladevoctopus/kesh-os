@@ -6,33 +6,12 @@
 #define WIN_H 310
 
 static void get_cpu_brand(char *brand, int max_len) {
-    uint32_t eax, ebx, ecx, edx;
-    __asm__ volatile ("cpuid" : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx) : "a"(0x80000000));
-    if (eax >= 0x80000004) {
-        char buf[49];
-        uint32_t *p = (uint32_t*)buf;
-        for (uint32_t leaf = 0x80000002; leaf <= 0x80000004; leaf++) {
-            __asm__ volatile ("cpuid" : "=a"(*p), "=b"(*(p+1)), "=c"(*(p+2)), "=d"(*(p+3)) : "a"(leaf));
-            p += 4;
-        }
-        buf[48] = '\0';
-        char *s = buf;
-        while (*s == ' ') s++;
-        int i = 0;
-        while (s[i] && i < max_len - 1) {
-            brand[i] = s[i];
-            i++;
-        }
-        brand[i] = '\0';
-    } else {
-        const char *def_c = "x86_64 Processor";
-        int i = 0;
-        while (def_c[i] && i < max_len - 1) {
-            brand[i] = def_c[i];
-            i++;
-        }
-        brand[i] = '\0';
-    }
+    kesh_cpu_info_t info;
+    const char *source = "x86_64 Processor";
+    if (kesh_cpu_info(&info) == 0 && info.brand[0]) source = info.brand;
+    int i = 0;
+    while (source[i] && i < max_len - 1) { brand[i] = source[i]; i++; }
+    brand[i] = '\0';
 }
 
 static void int_to_str(int val, char *buf) {

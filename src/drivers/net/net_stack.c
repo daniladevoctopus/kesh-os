@@ -157,6 +157,7 @@ static uint8_t  s_tcp_peer_mac[6];
 static uint8_t  s_tcp_peer_mac_valid = 0;
 static volatile uint32_t s_tcp_rx_head = 0;
 static volatile uint32_t s_tcp_rx_tail = 0;
+static net_udp_handler_t s_udp_handler = NULL;
 
 static void serial_print(const char *s) {
     while (s && *s) {
@@ -614,13 +615,19 @@ static void handle_ipv4(const uint8_t *packet, uint16_t len) {
     if (len < sizeof(eth_header_t) + sizeof(ipv4_header_t)) return;
     const eth_header_t *eth = (const eth_header_t*)packet;
     const ipv4_header_t *ip = (const ipv4_header_t*)(packet + sizeof(eth_header_t));
+    uint16_t ip_length = ntohs(ip->total_len);
+    if (ip->ver_ihl != 0x45 || ip_length < sizeof(ipv4_header_t) ||
+        sizeof(eth_header_t) + ip_length > len || (ntohs(ip->flags_offset) & 0x3FFFU)) return;
+    if (calc_checksum(ip, sizeof(ipv4_header_t)) != 0) return;
 
     if (ip->dst_ip != s_my_ip && ip->dst_ip != 0xFFFFFFFF) return;
 
     if (ip->protocol == IP_PROTO_ICMP) {
         size_t ip_hdr_len = (ip->ver_ihl & 0x0F) * 4;
+        if (ip_length < ip_hdr_len + sizeof(icmp_header_t)) return;
         const icmp_header_t *icmp = (const icmp_header_t*)(packet + sizeof(eth_header_t) + ip_hdr_len);
-        size_t icmp_len = ntohs(ip->total_len) - ip_hdr_len;
+        size_t icmp_len = ip_length - ip_hdr_len;
+        if (sizeof(eth_header_t) + sizeof(ipv4_header_t) + icmp_len > 1500) return;
 
         if (icmp->type == 8) {
 
@@ -664,13 +671,15 @@ static void handle_ipv4(const uint8_t *packet, uint16_t len) {
         }
     } else if (ip->protocol == IP_PROTO_UDP) {
         size_t ip_hdr_len = (ip->ver_ihl & 0x0F) * 4;
+        if (ip_hdr_len < sizeof(ipv4_header_t) || sizeof(eth_header_t) + ip_hdr_len + sizeof(udp_header_t) > len) return;
         const udp_header_t *udp = (const udp_header_t*)(packet + sizeof(eth_header_t) + ip_hdr_len);
         const uint8_t *udp_payload = (const uint8_t*)udp + sizeof(udp_header_t);
         uint16_t udp_len = ntohs(udp->length);
-        if (udp_len < sizeof(udp_header_t)) return;
+        if (udp_len < sizeof(udp_header_t) || sizeof(eth_header_t) + ip_hdr_len + udp_len > len) return;
         uint16_t payload_len = (uint16_t)(udp_len - sizeof(udp_header_t));
         if (ntohs(udp->src_port) == 67 && ntohs(udp->dst_port) == 68) handle_dhcp_reply(udp_payload, payload_len);
         if (ntohs(udp->src_port) == 53) handle_dns_reply(udp_payload, payload_len);
+        if (s_udp_handler) s_udp_handler(ip->src_ip, ntohs(udp->src_port), ntohs(udp->dst_port), udp_payload, payload_len);
     } else if (ip->protocol == IP_PROTO_TCP) {
         handle_tcp(packet, len);
     }
@@ -690,6 +699,33 @@ void net_poll(void) {
             handle_ipv4(buf, (uint16_t)len);
         }
     }
+}
+
+void net_udp_set_handler(net_udp_handler_t handler) {
+    s_udp_handler = handler;
+}
+
+int net_udp_send(uint32_t destination_ip, uint16_t source_port, uint16_t destination_port,
+                 const void *data, uint16_t length) {
+    if (!destination_ip || !source_port || !destination_port || (!data && length) || length > 1400) return -1;
+    uint8_t destination_mac[6];
+    if (net_resolve_mac(destination_ip, destination_mac) != 0) return -2;
+    uint8_t frame[sizeof(eth_header_t) + sizeof(ipv4_header_t) + sizeof(udp_header_t) + 1400];
+    eth_header_t *eth = (eth_header_t *)frame;
+    ipv4_header_t *ip = (ipv4_header_t *)(frame + sizeof(*eth));
+    udp_header_t *udp = (udp_header_t *)((uint8_t *)ip + sizeof(*ip));
+    uint8_t *payload = (uint8_t *)udp + sizeof(*udp);
+    for (int i = 0; i < 6; ++i) { eth->dst_mac[i] = destination_mac[i]; eth->src_mac[i] = s_my_mac[i]; }
+    eth->ethertype = htons(ETH_TYPE_IPV4);
+    uint16_t udp_length = (uint16_t)(sizeof(*udp) + length);
+    ip->ver_ihl = 0x45; ip->tos = 0; ip->total_len = htons((uint16_t)(sizeof(*ip) + udp_length));
+    ip->id = htons((uint16_t)(timer_millis() & 0xFFFFU)); ip->flags_offset = 0; ip->ttl = 64;
+    ip->protocol = IP_PROTO_UDP; ip->src_ip = s_my_ip; ip->dst_ip = destination_ip; ip->checksum = 0;
+    ip->checksum = calc_checksum(ip, sizeof(*ip));
+    udp->src_port = htons(source_port); udp->dst_port = htons(destination_port);
+    udp->length = htons(udp_length); udp->checksum = 0;
+    for (uint16_t i = 0; i < length; ++i) payload[i] = ((const uint8_t *)data)[i];
+    return netdev_send(frame, (uint16_t)(sizeof(*eth) + sizeof(*ip) + udp_length));
 }
 
 void net_init(void) {
@@ -1071,4 +1107,13 @@ void net_tcp_close(void) {
         netdev_send(frame, sizeof(frame));
     }
     s_tcp_state = TCP_STATE_CLOSED;
+}
+
+int net_tcp_is_connected(void) {
+    return s_tcp_state == TCP_STATE_ESTABLISHED;
+}
+
+int net_tcp_available(void) {
+    if (s_tcp_rx_head >= s_tcp_rx_tail) return (int)(s_tcp_rx_head - s_tcp_rx_tail);
+    return (int)(sizeof(s_tcp_rx_buf) - s_tcp_rx_tail + s_tcp_rx_head);
 }

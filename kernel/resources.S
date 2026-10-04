@@ -139,3 +139,73 @@ about_elf_end:
 about_kea_start:
 .incbin "build/apps/about.kea"
 about_kea_end:
+.globl browser_kea_start
+.globl browser_kea_end
+browser_kea_start:
+.incbin "build/apps/browser.kea"
+browser_kea_end:
+.globl installer_kea_start
+.globl installer_kea_end
+installer_kea_start:
+.incbin "build/apps/installer.kea"
+installer_kea_end:
+.globl kesh_icon_settings_start
+.globl kesh_icon_settings_end
+kesh_icon_settings_start:
+.incbin "assets/icons/settings.ico"
+kesh_icon_settings_end:
+.globl kesh_icon_picture_start
+.globl kesh_icon_picture_end
+kesh_icon_picture_start:
+.incbin "assets/icons/picture.ico"
+kesh_icon_picture_end:
+.globl kesh_icon_file_start
+.globl kesh_icon_file_end
+kesh_icon_file_start:
+.incbin "assets/icons/file.ico"
+kesh_icon_file_end:
+.globl kesh_icon_folder_start
+.globl kesh_icon_folder_end
+kesh_icon_folder_start:
+.incbin "assets/icons/folder.ico"
+kesh_icon_folder_end:
+.globl kesh_icon_explorer_start
+.globl kesh_icon_explorer_end
+kesh_icon_explorer_start:
+.incbin "assets/icons/explorer.ico"
+kesh_icon_explorer_end:
+.globl kesh_icon_terminal_start
+.globl kesh_icon_terminal_end
+kesh_icon_terminal_start:
+.incbin "assets/icons/terminal.ico"
+kesh_icon_terminal_end:
+.globl kesh_icon_taskmgr_start
+.globl kesh_icon_taskmgr_end
+kesh_icon_taskmgr_start:
+.incbin "assets/icons/taskmgr.ico"
+kesh_icon_taskmgr_end:
+.globl kesh_icon_browser_start
+.globl kesh_icon_browser_end
+kesh_icon_browser_start:
+.incbin "assets/icons/browser.ico"
+kesh_icon_browser_end:
+.globl kesh_icon_installer_start
+.globl kesh_icon_installer_end
+kesh_icon_installer_start:
+.incbin "assets/icons/installer.ico"
+kesh_icon_installer_end:
+.globl kesh_icon_notepad_start
+.globl kesh_icon_notepad_end
+kesh_icon_notepad_start:
+.incbin "assets/icons/notepad.ico"
+kesh_icon_notepad_end:
+.globl kesh_icon_paint_start
+.globl kesh_icon_paint_end
+kesh_icon_paint_start:
+.incbin "assets/icons/paint.ico"
+kesh_icon_paint_end:
+.globl kesh_icon_doom_start
+.globl kesh_icon_doom_end
+kesh_icon_doom_start:
+.incbin "assets/icons/doom.ico"
+kesh_icon_doom_end:

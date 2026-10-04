@@ -1,5 +1,6 @@
 // блокнот для заметок
 #include "kesh.h"
+#include "kesh_ico.h"
 
 #define WIN_W 500
 #define WIN_H 320
@@ -60,6 +61,10 @@ int main(void) {
     uint32_t *fb = kesh_create_window(WIN_W, WIN_H, "Notepad");
     if (!fb) return 1;
 
+    static uint8_t icon_data[10000];
+    kesh_ico_image_t icon;
+    int icon_ready = kesh_ico_load_vfs("/icons/notepad.ico", icon_data, sizeof(icon_data), &icon) == 0;
+
     load_initial_text();
 
     int cursor_tick = 0;
@@ -79,7 +84,8 @@ int main(void) {
         kesh_draw_rect(fb, WIN_W, 0, 0, WIN_W, 32, 0xFF24262E);
         kesh_draw_rect(fb, WIN_W, 0, 32, WIN_W, 1, 0xFF323540);
 
-        kesh_draw_file_icon(fb, WIN_W, 12, 8, 16, 0xFF0A84FF);
+        if (icon_ready) kesh_ico_draw(fb, WIN_W, 10, 6, 20, &icon);
+        else kesh_draw_rounded_rect(fb, WIN_W, 12, 8, 16, 16, 4, 0xFF9CA7B4);
         draw_string("Notepad", 34, 10, 0xFFFFFFFF, fb, WIN_W);
 
         kesh_draw_rounded_rect(fb, WIN_W, save_btn_x, save_btn_y, save_btn_w, save_btn_h, 4, 0xFF0A84FF);

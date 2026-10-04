@@ -1,5 +1,6 @@
 from pathlib import Path
 import shutil
+import os
 import subprocess
 import sys
 
@@ -14,9 +15,11 @@ def clean_stage():
     dirs = [
         READY / 'boot' / 'limine',
         READY / 'boot' / 'apps',
+        READY / 'boot' / 'fonts',
         READY / 'apps',
         READY / 'EFI' / 'BOOT',
-        READY / 'system'
+        READY / 'system',
+        READY / 'icons'
     ]
     for d in dirs:
         d.mkdir(parents=True, exist_ok=True)
@@ -35,6 +38,7 @@ def clean_stage():
         (BUILD / 'apps' / 'settings.kea', READY / 'apps' / 'settings.kea'),
         (BUILD / 'apps' / 'about.kea', READY / 'apps' / 'about.kea'),
         (BUILD / 'apps' / 'browser.kea', READY / 'apps' / 'browser.kea'),
+        (BUILD / 'apps' / 'installer.kea', READY / 'apps' / 'installer.kea'),
         (ROOT / 'boot' / 'limine' / 'limine-bios-cd.bin', READY / 'boot' / 'limine' / 'limine-bios-cd.bin'),
         (ROOT / 'boot' / 'limine' / 'limine-uefi-cd.bin', READY / 'boot' / 'limine' / 'limine-uefi-cd.bin'),
         (ROOT / 'boot' / 'limine' / 'limine-bios.sys', READY / 'boot' / 'limine' / 'limine-bios.sys'),
@@ -54,15 +58,35 @@ def clean_stage():
         elif 'browser' not in src.name:
             raise RuntimeError(f'missing build artifact: {src}')
 
+    icons = ROOT / 'assets' / 'icons'
+    for icon in icons.glob('*.ico'):
+        shutil.copy2(icon, READY / 'icons' / icon.name)
+
+    ports_bin = ROOT / 'ports_bin'
+    if ports_bin.exists():
+        for elf in ports_bin.glob('*.elf'):
+            shutil.copy2(elf, READY / 'boot' / 'apps' / elf.name)
+
+    fonts = ROOT / 'assets' / 'fonts'
+    if fonts.exists():
+        for fnt in fonts.glob('*'):
+            if fnt.is_file():
+                shutil.copy2(fnt, READY / 'boot' / 'fonts' / fnt.name)
+
 
 def find_xorriso():
-    toolchain_xorriso = Path("D:/keshos-toolchain/KeshBE/bin/xorriso.exe")
-    if toolchain_xorriso.exists():
-        return str(toolchain_xorriso)
-    found = shutil.which("xorriso")
+    env_toolchain = os.environ.get("KESHOS_TOOLCHAIN")
+    candidates = []
+    if env_toolchain:
+        candidates += [Path(env_toolchain) / "xorriso", Path(env_toolchain) / "xorriso.exe"]
+    candidates += [Path("D:/keshos-toolchain/KeshBE/bin/xorriso.exe")]
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate)
+    found = shutil.which("xorriso") or shutil.which("xorriso.exe")
     if found:
         return found
-    raise RuntimeError("xorriso not found in toolchain or PATH")
+    raise RuntimeError("xorriso not found. Install xorriso with your Linux package manager.")
 
 
 def main():

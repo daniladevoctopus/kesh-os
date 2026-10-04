@@ -1,6 +1,6 @@
 // драйвер сидюка iso9660
 #include "iso9660.h"
-#include "ata.h"
+#include "block.h"
 
 static iso9660_info_t s_primary_iso;
 static uint8_t s_sector_buf[ISO9660_SECTOR_SIZE];
@@ -9,16 +9,18 @@ static inline uint32_t rd_le32(const uint8_t *p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
 
-int iso9660_probe(int drive_idx, iso9660_info_t *out_info) {
+int iso9660_probe(int block_device_id, iso9660_info_t *out_info) {
     if (!out_info) return 0;
     out_info->present = 0;
-    out_info->drive_idx = drive_idx;
+    out_info->drive_idx = block_device_id;
+    out_info->block_device_id = block_device_id;
     out_info->volume_label[0] = '\0';
     out_info->root_lba = 0;
     out_info->root_size = 0;
     out_info->total_bytes = 0;
 
-    if (!atapi_read_sectors(drive_idx, 16, 1, s_sector_buf)) {
+    const block_device_t *device = block_get_device(block_device_id);
+    if (!device || device->block_size != ISO9660_SECTOR_SIZE || block_read(block_device_id, 16, 1, s_sector_buf) != 0) {
         return 0;
     }
 
@@ -52,20 +54,9 @@ int iso9660_probe(int drive_idx, iso9660_info_t *out_info) {
 
 int iso9660_init(void) {
     s_primary_iso.present = 0;
-    int cdrom_idx = ata_get_primary_cdrom();
-    if (cdrom_idx >= 0) {
-        if (iso9660_probe(cdrom_idx, &s_primary_iso)) {
-            return 1;
-        }
-    }
-
-    for (int i = 0; i < ATA_MAX_DRIVES; i++) {
-        const ata_device_t *d = ata_get_drive(i);
-        if (d && d->present && d->type == ATA_TYPE_CDROM) {
-            if (iso9660_probe(i, &s_primary_iso)) {
-                return 1;
-            }
-        }
+    for (int i = 0; i < block_device_count(); ++i) {
+        const block_device_t *device = block_get_device(i);
+        if (device && !device->writable && device->block_size == ISO9660_SECTOR_SIZE && iso9660_probe(i, &s_primary_iso)) return 1;
     }
 
     return 0;
@@ -78,7 +69,7 @@ const iso9660_info_t* iso9660_get_primary_info(void) {
 int iso9660_list_dir(uint32_t lba, uint32_t dir_size, iso9660_entry_t *out_entries, int max_entries) {
     if (!s_primary_iso.present || !out_entries || max_entries <= 0) return 0;
 
-    int drive_idx = s_primary_iso.drive_idx;
+    int block_device_id = s_primary_iso.block_device_id;
     uint32_t sectors = (dir_size + ISO9660_SECTOR_SIZE - 1) / ISO9660_SECTOR_SIZE;
     if (sectors == 0) sectors = 1;
     if (sectors > 16) sectors = 16;
@@ -86,7 +77,7 @@ int iso9660_list_dir(uint32_t lba, uint32_t dir_size, iso9660_entry_t *out_entri
     int count = 0;
 
     for (uint32_t s = 0; s < sectors; s++) {
-        if (!atapi_read_sectors(drive_idx, lba + s, 1, s_sector_buf)) {
+        if (block_read(block_device_id, lba + s, 1, s_sector_buf) != 0) {
             break;
         }
 
@@ -131,26 +122,62 @@ int iso9660_list_dir(uint32_t lba, uint32_t dir_size, iso9660_entry_t *out_entri
     return count;
 }
 
-int iso9660_read_file(uint32_t lba, uint32_t size, void *buf, int max_bytes) {
-    if (!s_primary_iso.present || !buf || max_bytes <= 0) return 0;
-    int drive_idx = s_primary_iso.drive_idx;
+int iso9660_read_file_offset(uint32_t lba, uint32_t size, uint64_t offset, void *buf, int max_bytes) {
+    if (!s_primary_iso.present || !buf || max_bytes <= 0 || offset >= size) return 0;
+    int block_device_id = s_primary_iso.block_device_id;
 
-    uint32_t to_read = (size < (uint32_t)max_bytes) ? size : (uint32_t)max_bytes;
-    uint32_t sectors = (to_read + ISO9660_SECTOR_SIZE - 1) / ISO9660_SECTOR_SIZE;
+    uint32_t available = size - (uint32_t)offset;
+    uint32_t to_read = (available < (uint32_t)max_bytes) ? available : (uint32_t)max_bytes;
+
+    uint32_t start_sec = (uint32_t)(offset / ISO9660_SECTOR_SIZE);
+    uint32_t sec_offset = (uint32_t)(offset % ISO9660_SECTOR_SIZE);
+
     uint8_t *dst = (uint8_t*)buf;
-
     uint32_t bytes_left = to_read;
-    for (uint32_t s = 0; s < sectors; s++) {
-        if (!atapi_read_sectors(drive_idx, lba + s, 1, s_sector_buf)) {
-            return (int)(to_read - bytes_left);
-        }
+    uint32_t cur_sec = start_sec;
 
-        uint32_t chunk = (bytes_left > ISO9660_SECTOR_SIZE) ? ISO9660_SECTOR_SIZE : bytes_left;
+    /* 1. Unaligned head sector */
+    if (sec_offset != 0) {
+        if (block_read(block_device_id, lba + cur_sec, 1, s_sector_buf) != 0) {
+            return 0;
+        }
+        uint32_t avail_in_sec = ISO9660_SECTOR_SIZE - sec_offset;
+        uint32_t chunk = bytes_left < avail_in_sec ? bytes_left : avail_in_sec;
         for (uint32_t i = 0; i < chunk; i++) {
-            *dst++ = s_sector_buf[i];
+            *dst++ = s_sector_buf[sec_offset + i];
         }
         bytes_left -= chunk;
+        cur_sec++;
+    }
+
+    /* 2. Full aligned sectors directly into dst in multi-sector batches (up to 32 sectors = 64KB) */
+    while (bytes_left >= ISO9660_SECTOR_SIZE) {
+        uint32_t full_sectors = bytes_left / ISO9660_SECTOR_SIZE;
+        uint32_t batch = full_sectors > 32 ? 32 : full_sectors;
+        if (block_read(block_device_id, lba + cur_sec, batch, dst) != 0) {
+            return (int)(to_read - bytes_left);
+        }
+        uint32_t read_bytes = batch * ISO9660_SECTOR_SIZE;
+        dst += read_bytes;
+        bytes_left -= read_bytes;
+        cur_sec += batch;
+    }
+
+    /* 3. Partial tail sector */
+    if (bytes_left > 0) {
+        if (block_read(block_device_id, lba + cur_sec, 1, s_sector_buf) != 0) {
+            return (int)(to_read - bytes_left);
+        }
+        for (uint32_t i = 0; i < bytes_left; i++) {
+            *dst++ = s_sector_buf[i];
+        }
+        bytes_left = 0;
     }
 
     return (int)to_read;
 }
+
+int iso9660_read_file(uint32_t lba, uint32_t size, void *buf, int max_bytes) {
+    return iso9660_read_file_offset(lba, size, 0, buf, max_bytes);
+}
+

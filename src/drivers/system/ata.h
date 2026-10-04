@@ -37,6 +37,7 @@ int ata_read_sectors(uint32_t lba, uint8_t count, uint8_t* buf);
 int ata_write_sectors(uint32_t lba, uint8_t count, const uint8_t* buf);
 int ata_read_sectors_drive(int drive_idx, uint32_t lba, uint8_t count, uint8_t* buf);
 int ata_write_sectors_drive(int drive_idx, uint32_t lba, uint8_t count, const uint8_t* buf);
+int ata_flush_drive(int drive_idx);
 
 int atapi_read_capacity(int drive_idx, uint64_t *out_total_bytes, uint32_t *out_block_size);
 int atapi_read_sectors(int drive_idx, uint32_t lba, uint32_t count, uint8_t *buf);

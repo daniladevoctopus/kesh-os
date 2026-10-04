@@ -38,11 +38,13 @@ typedef struct vfs_node {
 void vfs_init(void);
 int vfs_list(const char *path, kesh_vfs_entry_t *out_entries, int max_entries);
 int vfs_read(const char *path, void *buffer, int max_bytes);
+int vfs_read_at(const char *path, uint64_t offset, void *buffer, int max_bytes);
 int vfs_write(const char *path, const void *buffer, int bytes);
 int vfs_stat(const char *path, kesh_vfs_stat_t *out_stat);
 vfs_node_t* vfs_get_node(const char *path);
 int vfs_mkdir(const char *path);
 int vfs_delete(const char *path);
+int vfs_rename(const char *old_path, const char *new_path);
 int vfs_get_disk_stats(uint64_t *total_bytes, uint64_t *free_bytes);
 void vfs_rescan_drives(void);
 

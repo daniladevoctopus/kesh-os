@@ -1,5 +1,6 @@
 // кернел паника keshos
 #include <stdint.h>
+#include "memory.h"
 
 extern uint8_t* g_fb_vram;
 extern uint32_t g_screen_w;
@@ -179,6 +180,10 @@ static void hex_to_str(uint64_t val, char *out, int digits) {
 }
 
 static void panic_serial_char(char c) {
+    uint8_t status;
+    do {
+        __asm__ volatile ("inb %1, %0" : "=a"(status) : "Nd"((uint16_t)0x3FD));
+    } while ((status & 0x20U) == 0);
     __asm__ volatile ("outb %0, %1" : : "a"((uint8_t)c), "Nd"((uint16_t)0x3F8));
 }
 
@@ -407,6 +412,33 @@ void isr_common_handler(uint64_t *stack_ptr) {
     panic_serial_str("\n================================================\n\n");
 
     if ((cs & 3) == 3) {
+        panic_serial_str("[PROCESS] User Mode Registers:\n");
+        panic_serial_str("  RAX: "); panic_serial_hex(stack_ptr[14]);
+        panic_serial_str("  RBX: "); panic_serial_hex(stack_ptr[13]);
+        panic_serial_str("  RCX: "); panic_serial_hex(stack_ptr[12]);
+        panic_serial_str("  RDX: "); panic_serial_hex(stack_ptr[11]); panic_serial_str("\n");
+        panic_serial_str("  RSI: "); panic_serial_hex(stack_ptr[10]);
+        panic_serial_str("  RDI: "); panic_serial_hex(stack_ptr[9]);
+        panic_serial_str("  RBP: "); panic_serial_hex(stack_ptr[8]); panic_serial_str("\n");
+        panic_serial_str("  R8 : "); panic_serial_hex(stack_ptr[7]);
+        panic_serial_str("  R9 : "); panic_serial_hex(stack_ptr[6]);
+        panic_serial_str("  R10: "); panic_serial_hex(stack_ptr[5]); panic_serial_str("\n");
+
+        panic_serial_str("[PROCESS] User Stack (RSP = "); panic_serial_hex(rsp); panic_serial_str("):\n");
+        uint64_t *ustack = (uint64_t *)rsp;
+        for (int i = 0; i < 16; i++) {
+            uint64_t val = 0;
+            if (copy_from_user(&val, &ustack[i], sizeof(val)) == 0) {
+                panic_serial_str("  [+0x");
+                panic_serial_hex((uint64_t)(i * 8));
+                panic_serial_str("] = ");
+                panic_serial_hex(val);
+                panic_serial_str("\n");
+            } else {
+                break;
+            }
+        }
+
         panic_serial_str("[PROCESS] User Mode fault caught! Terminating crashed Ring 3 process.\n");
         extern int g_active_proc_idx;
         extern int process_kill(int pid);

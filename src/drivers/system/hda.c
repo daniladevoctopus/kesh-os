@@ -1,6 +1,7 @@
 // чип intel hda
 #include <stdint.h>
 #include <stdbool.h>
+#include "memory.h"
 
 #define PCI_CONFIG_ADDRESS 0xCF8
 #define PCI_CONFIG_DATA    0xCFC
@@ -54,10 +55,13 @@ bool hda_init(void) {
                 uint32_t bar0 = pci_read_config(bus, slot, 0, 0x10);
                 uint32_t bar1 = pci_read_config(bus, slot, 0, 0x14);
 
+                if (bar0 & 1U) continue;
                 hda_mmio_base = (uint64_t)(bar0 & 0xFFFFFFF0);
                 if ((bar0 & 0x06) == 0x04) {
                     hda_mmio_base |= (((uint64_t)bar1) << 32);
                 }
+                if (!hda_mmio_base) continue;
+                hda_mmio_base += g_hhdm_offset;
 
                 uint32_t cmd = pci_read_config(bus, slot, 0, 0x04);
                 outl(PCI_CONFIG_ADDRESS, (uint32_t)((bus << 16) | (slot << 11) | 0x80000004));

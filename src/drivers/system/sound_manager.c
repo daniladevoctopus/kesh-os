@@ -5,26 +5,31 @@
 
 static audio_dev_t active_dev = AUDIO_DEV_NONE;
 
-void sound_init(void) {
-    if (hda_init()) {
-        active_dev = AUDIO_DEV_HDA;
-        return;
-    }
-
+int sound_init(void) {
     if (ac97_init()) {
         active_dev = AUDIO_DEV_AC97;
-        return;
+        return 0;
+    }
+
+    if (hda_init()) {
+        active_dev = AUDIO_DEV_HDA;
+        return -2;
     }
 
     active_dev = AUDIO_DEV_NONE;
+    return -1;
 }
 
-void sound_set_volume(uint8_t vol) {
-    if (active_dev == AUDIO_DEV_HDA) hda_set_volume(vol);
-    else if (active_dev == AUDIO_DEV_AC97) ac97_set_volume(vol);
+int sound_set_volume(uint8_t vol) {
+    if (vol > 100) return -1;
+    if (active_dev == AUDIO_DEV_AC97) { ac97_set_volume(vol); return 0; }
+    return -1;
 }
 
-void sound_play_pcm(const uint16_t* samples, uint32_t count) {
-    if (active_dev == AUDIO_DEV_HDA) hda_play_pcm(samples, count);
-    else if (active_dev == AUDIO_DEV_AC97) ac97_play_pcm(samples, count);
+int sound_play_pcm(const void *data, uint32_t bytes) {
+    if (active_dev == AUDIO_DEV_AC97) return ac97_play_pcm((const uint8_t *)data, bytes);
+    return -1;
 }
+
+audio_dev_t sound_device(void) { return active_dev; }
+int sound_is_ready(void) { return active_dev == AUDIO_DEV_AC97; }

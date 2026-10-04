@@ -4,6 +4,9 @@
 #include "gui/font.h"
 #include "gui/anim/genie_anim.h"
 #include "gui/anim/win_chrome.h"
+#include "drivers/system/fat32.h"
+#include "memory.h"
+#include "log.h"
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -197,12 +200,65 @@ static void term_exec(const char *cmdline) {
     if (t_strlen(cmd) == 0) {
         return;
     } else if (t_streq(cmd, "help")) {
-        term_push_line("COMMANDS: HELP KPM PING NSLOOKUP CURL IFCONFIG NOTEPAD EXPLORER PANIC CLEAR");
+        term_push_line("COMMANDS: HELP KPM FSCK MEM LASTLOG PING NSLOOKUP CURL IFCONFIG PANIC CLEAR");
     } else if (t_streq(cmd, "kpm")) {
         extern void kpm_cmd_exec(const char *args, void (*print_fn)(const char *line));
         kpm_cmd_exec(rest, term_push_line);
     } else if (t_streq(cmd, "clear")) {
         line_count = 0;
+    } else if (t_streq(cmd, "fsck")) {
+        fat32_repair_report_t report;
+        if (fat32_check_repair(&report)) {
+            char line[80];
+            char number[16];
+            t_strcpy(line, "FSCK OK: reclaimed clusters=", sizeof(line));
+            uint32_t value = report.reclaimed_clusters;
+            int pos = 0;
+            do { number[pos++] = (char)('0' + value % 10U); value /= 10U; } while (value && pos < 15);
+            for (int a = 0, b = pos - 1; a < b; ++a, --b) { char c = number[a]; number[a] = number[b]; number[b] = c; }
+            number[pos] = 0;
+            t_strcat(line, number, sizeof(line));
+            term_push_line(line);
+        } else {
+            term_push_line("FSCK FAILED: storage unavailable or repair incomplete");
+        }
+    } else if (t_streq(cmd, "mem")) {
+        pmm_diagnostics_t diag;
+        pmm_get_diagnostics(&diag);
+        char line[80];
+        char number[24];
+        uint64_t value = diag.free_bytes / (1024ULL * 1024ULL);
+        int pos = 0;
+        do { number[pos++] = (char)('0' + value % 10ULL); value /= 10ULL; } while (value && pos < 23);
+        for (int a = 0, b = pos - 1; a < b; ++a, --b) { char c = number[a]; number[a] = number[b]; number[b] = c; }
+        number[pos] = 0;
+        t_strcpy(line, "PMM free MiB=", sizeof(line));
+        t_strcat(line, number, sizeof(line));
+        t_strcat(line, " largest MiB=", sizeof(line));
+        value = diag.largest_free_run / (1024ULL * 1024ULL);
+        pos = 0;
+        do { number[pos++] = (char)('0' + value % 10ULL); value /= 10ULL; } while (value && pos < 23);
+        for (int a = 0, b = pos - 1; a < b; ++a, --b) { char c = number[a]; number[a] = number[b]; number[b] = c; }
+        number[pos] = 0;
+        t_strcat(line, number, sizeof(line));
+        term_push_line(line);
+    } else if (t_streq(cmd, "lastlog")) {
+        static char previous[4096];
+        int size = klog_previous_snapshot(previous, sizeof(previous));
+        if (size <= 0) {
+            term_push_line("No persisted previous-boot log available");
+        } else {
+            int offset = 0;
+            for (int row = 0; row < 8 && offset < size; ++row) {
+                char line[TERM_LINE_MAX];
+                int length = 0;
+                while (offset < size && previous[offset] != '\n' && length < TERM_LINE_MAX - 1) line[length++] = previous[offset++];
+                while (offset < size && previous[offset] != '\n') offset++;
+                if (offset < size && previous[offset] == '\n') offset++;
+                line[length] = 0;
+                if (length) term_push_line(line);
+            }
+        }
     } else if (t_streq(cmd, "pwd")) {
         term_push_line("/");
     } else if (t_streq(cmd, "whoami")) {

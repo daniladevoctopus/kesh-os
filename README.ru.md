@@ -103,10 +103,44 @@
 Для сборки необходимы установленные инструменты:
 
 * **LLVM / Clang** (`clang`, `clang++`, `ld.lld`) или `x86_64-elf-gcc`
-* **NASM** (ассемблер x86_64)
-* Система сборки **Ninja** и **Python 3**
+* **Ninja** и **Python 3**
+* **LLVM / Clang / LLD** (для текущего freestanding build)
 * **xorriso** (для создания загрузочного ISO-образа)
-* **QEMU** или **VirtualBox** (для тестирования)
+* **QEMU** для тестирования
+
+### Linux / CachyOS
+
+Для CachyOS достаточно установить базовый набор зависимостей:
+
+```bash
+sudo pacman -S --needed base-devel python ninja clang llvm lld xorriso qemu-desktop
+```
+
+CachyOS документирует установку QEMU через `pacman`; пакет `qemu-desktop` является официальным Arch-пакетом для desktop-конфигурации QEMU. Подробнее: https://wiki.cachyos.org/ru/virtualization/qemu_and_vmm_setup/
+
+После этого весь проект можно собрать одной командой:
+
+```bash
+chmod +x build.sh
+./build.sh
+```
+
+Для автоматической установки зависимостей из самого скрипта:
+
+```bash
+./build.sh --install-deps
+```
+
+Результат: `build/keshos.iso`.
+
+Для запуска ISO в QEMU с прямой записью COM1-лога ядра в `serial.log`:
+
+```bash
+chmod +x run-qemu-log.sh
+./run-qemu-log.sh
+```
+
+Этот режим использует 2 виртуальных CPU и сохраняет именно поток serial/COM1 вместе с QEMU stderr/stdout. Внутренние записи ядра содержат время, tick, CPU, исходный файл/строку и реальные аппаратные значения, когда они доступны.
 
 ### 1. Генерация графа сборки и компиляция ядра
 

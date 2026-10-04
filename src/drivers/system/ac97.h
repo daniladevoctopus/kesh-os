@@ -15,6 +15,6 @@ typedef struct {
 
 int ac97_init(void);
 void ac97_set_volume(uint8_t vol);
-void ac97_play_pcm(const uint16_t* samples, uint32_t count);
+int ac97_play_pcm(const uint8_t *pcm_data, uint32_t length);
 
 #endif

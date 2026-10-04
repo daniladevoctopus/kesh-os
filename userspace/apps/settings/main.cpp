@@ -56,6 +56,8 @@ enum Tab {
     TAB_PERSONALIZATION,
     TAB_WINDOW_CONTROLS,
     TAB_DOCK,
+    TAB_MOTION,
+    TAB_SYSTEM,
     TAB_COUNT
 };
 
@@ -65,10 +67,12 @@ struct TabInfo {
 };
 
 static const TabInfo g_tabs[TAB_COUNT] = {
-    { "Appearance", "Art" },
-    { "Personalization", "Clr" },
-    { "Window Controls", "WM" },
-    { "Dock", "Bar" }
+    { "Themes", "" },
+    { "Color", "" },
+    { "Windows", "" },
+    { "Dock", "" },
+    { "Motion", "" },
+    { "System", "" }
 };
 
 class SettingsWindow {
@@ -104,6 +108,12 @@ public:
         m_settings.window_controls_align = 0;
         m_settings.dark_mode = 1;
         m_settings.accent_color = 0;
+        m_settings.theme_id = 1;
+        m_settings.animations_enabled = 1;
+        m_settings.animation_speed = 65;
+        m_settings.interface_density = 1;
+        m_settings.show_seconds = 0;
+        m_settings.liquid_glass = 0;
     }
 
     bool init() {
@@ -169,16 +179,16 @@ private:
 
             if (m_current_tab == TAB_APPEARANCE) {
                 int card_y = 70;
-                int btn_w = (card_w - 46) / 2, btn_h = 42;
-                int btn_y = card_y + 46;
-                if (mx >= content_x + 16 && mx <= content_x + 16 + btn_w && my >= btn_y && my <= btn_y + btn_h) {
-                    m_settings.dark_mode = 0;
-                    kesh_set_settings(&m_settings);
-                }
-                int dark_x = content_x + 16 + btn_w + 14;
-                if (mx >= dark_x && mx <= dark_x + btn_w && my >= btn_y && my <= btn_y + btn_h) {
-                    m_settings.dark_mode = 1;
-                    kesh_set_settings(&m_settings);
+                int btn_y = card_y + 62;
+                int gap = 12;
+                int btn_w = (card_w - 32 - gap * 2) / 3;
+                for (int i = 0; i < 3; ++i) {
+                    int bx = content_x + 16 + i * (btn_w + gap);
+                    if (mx >= bx && mx <= bx + btn_w && my >= btn_y && my <= btn_y + 92) {
+                        m_settings.theme_id = i;
+                        m_settings.dark_mode = (i == 1) ? 1 : 0;
+                        kesh_set_settings(&m_settings);
+                    }
                 }
             }
             else if (m_current_tab == TAB_PERSONALIZATION) {
@@ -236,6 +246,39 @@ private:
                     if (rel < 0) rel = 0;
                     if (rel > slider_w) rel = slider_w;
                     m_settings.dock_mag_level = (rel * 100) / slider_w;
+                    kesh_set_settings(&m_settings);
+                }
+            }
+            else if (m_current_tab == TAB_MOTION) {
+                int card_y = 70;
+                int sw_x = content_x + card_w - 68;
+                if (mx >= sw_x && mx <= sw_x + 48 && my >= card_y + 18 && my <= card_y + 44) {
+                    m_settings.animations_enabled = !m_settings.animations_enabled;
+                    kesh_set_settings(&m_settings);
+                }
+                int slider_x = content_x + 16;
+                int slider_w = card_w - 32;
+                if (mx >= slider_x - 10 && mx <= slider_x + slider_w + 10 && my >= card_y + 106 && my <= card_y + 132) {
+                    int rel = mx - slider_x; if (rel < 0) rel = 0; if (rel > slider_w) rel = slider_w;
+                    m_settings.animation_speed = 20 + (rel * 80) / slider_w;
+                    kesh_set_settings(&m_settings);
+                }
+            }
+            else if (m_current_tab == TAB_SYSTEM) {
+                int card_y = 70;
+                int btn_w = (card_w - 46) / 2;
+                if (my >= card_y + 64 && my <= card_y + 104) {
+                    if (mx >= content_x + 16 && mx <= content_x + 16 + btn_w) m_settings.interface_density = 0;
+                    else if (mx >= content_x + 30 + btn_w && mx <= content_x + 30 + btn_w * 2) m_settings.interface_density = 1;
+                    kesh_set_settings(&m_settings);
+                }
+                int sw_x = content_x + card_w - 68;
+                if (mx >= sw_x && mx <= sw_x + 48 && my >= card_y + 132 && my <= card_y + 158) {
+                    m_settings.show_seconds = !m_settings.show_seconds;
+                    kesh_set_settings(&m_settings);
+                }
+                if (mx >= sw_x && mx <= sw_x + 48 && my >= card_y + 170 && my <= card_y + 196) {
+                    m_settings.liquid_glass = !m_settings.liquid_glass;
                     kesh_set_settings(&m_settings);
                 }
             }
@@ -308,6 +351,12 @@ private:
             case TAB_DOCK:
                 render_tab_dock(content_x, content_y);
                 break;
+            case TAB_MOTION:
+                render_tab_motion(content_x, content_y);
+                break;
+            case TAB_SYSTEM:
+                render_tab_system(content_x, content_y);
+                break;
             default:
                 break;
         }
@@ -320,32 +369,29 @@ private:
         uint32_t text_label   = is_dark ? 0xFFE0E5F0 : 0xFF2C3038;
         uint32_t accent       = get_accent();
 
-        draw_string("Appearance", ox, oy, text_primary, m_fb, (uint32_t)m_w);
-        draw_string("System Appearance and Color Mode", ox, oy + 22, text_sec, m_fb, (uint32_t)m_w);
+        draw_string("System Themes", ox, oy, text_primary, m_fb, (uint32_t)m_w);
+        draw_string("A complete palette for Desktop, taskbar and native apps", ox, oy + 22, text_sec, m_fb, (uint32_t)m_w);
 
         int card_y = oy + 55;
         int card_w = m_w - (ox + 24);
-        kesh_draw_rounded_rect(m_fb, m_w, ox, card_y, card_w, 130, 12, is_dark ? 0x00232736 : 0x00FFFFFF);
+        kesh_draw_rounded_rect(m_fb, m_w, ox, card_y, card_w, 176, 12, is_dark ? 0x00232736 : 0x00FFFFFF);
         kesh_draw_rect(m_fb, m_w, ox + 6, card_y, card_w - 12, 1, is_dark ? 0x003D445C : 0x00D0D4DF);
 
-        draw_string("System Appearance Mode", ox + 16, card_y + 16, text_label, m_fb, (uint32_t)m_w);
-        draw_string("Switches Taskbar, Explorer and all apps between Light and Dark", ox + 16, card_y + 36, text_sec, m_fb, (uint32_t)m_w);
+        draw_string("Choose a complete system palette", ox + 16, card_y + 16, text_label, m_fb, (uint32_t)m_w);
+        draw_string("Theme changes animate smoothly across active native surfaces.", ox + 16, card_y + 36, text_sec, m_fb, (uint32_t)m_w);
 
-        int btn_w = (card_w - 46) / 2, btn_h = 42;
-        int btn_y = card_y + 66;
-
-        // Light mode button
-        uint32_t col_light_btn = !is_dark ? accent : (is_dark ? 0x002D3346 : 0x00E4E7EE);
-        kesh_draw_rounded_rect(m_fb, m_w, ox + 16, btn_y, btn_w, btn_h, 8, col_light_btn);
-        draw_string("Light (White)", ox + 16 + (btn_w - font_text_width("Light (White)")) / 2, btn_y + 13, !is_dark ? 0xFFFFFFFF : text_primary, m_fb, (uint32_t)m_w);
-
-        // Dark mode button
-        int dark_x = ox + 16 + btn_w + 14;
-        uint32_t col_dark_btn = is_dark ? accent : (is_dark ? 0x002D3346 : 0x00E4E7EE);
-        kesh_draw_rounded_rect(m_fb, m_w, dark_x, btn_y, btn_w, btn_h, 8, col_dark_btn);
-        draw_string("Dark (Black)", dark_x + (btn_w - font_text_width("Dark (Black)")) / 2, btn_y + 13, is_dark ? 0xFFFFFFFF : text_primary, m_fb, (uint32_t)m_w);
-
-        draw_string("Themes apply across all native components instantly.", ox, card_y + 160, text_sec, m_fb, (uint32_t)m_w);
+        const char *names[3] = { "Paper", "Slate", "Linen" };
+        uint32_t swatches[3] = { 0xFFE9EDF0, 0xFF242C38, 0xFFF1E9DF };
+        int gap = 12, btn_w = (card_w - 32 - gap * 2) / 3, btn_y = card_y + 62;
+        for (int i = 0; i < 3; ++i) {
+            int bx = ox + 16 + i * (btn_w + gap);
+            bool selected = m_settings.theme_id == i;
+            kesh_draw_rounded_rect(m_fb, m_w, bx, btn_y, btn_w, 92, 10, selected ? accent : (is_dark ? 0x002D3346 : 0x00E4E7EE));
+            kesh_draw_rounded_rect(m_fb, m_w, bx + 6, btn_y + 6, btn_w - 12, 42, 7, swatches[i]);
+            if (i == 1) { kesh_draw_rect(m_fb, m_w, bx + 12, btn_y + 20, btn_w - 24, 2, 0xFF8190A4); }
+            draw_string(names[i], bx + (btn_w - font_text_width(names[i])) / 2, btn_y + 62, selected ? 0xFFFFFFFF : text_primary, m_fb, (uint32_t)m_w);
+            if (selected) draw_string("Selected", bx + (btn_w - font_text_width("Selected")) / 2, btn_y + 76, 0xFFFFFFFF, m_fb, (uint32_t)m_w);
+        }
     }
 
     void render_tab_personalization(int ox, int oy) {
@@ -512,6 +558,58 @@ private:
         int kx = slider_x + fill_w - 9;
         int ky = slider_y + 3 - 9;
         kesh_draw_rounded_rect(m_fb, m_w, kx, ky, 18, 18, 9, 0xFFFFFFFF);
+    }
+
+    void render_tab_motion(int ox, int oy) {
+        bool is_dark = (m_settings.dark_mode != 0);
+        uint32_t text_primary = is_dark ? 0xFFFFFFFF : 0xFF1D1D1F;
+        uint32_t text_sec = is_dark ? 0xFF8E95A5 : 0xFF6E6E73;
+        uint32_t accent = get_accent();
+        int card_w = m_w - (ox + 24), card_y = oy + 55;
+        draw_string("Motion", ox, oy, text_primary, m_fb, (uint32_t)m_w);
+        draw_string("Smooth, restrained transitions across the native interface", ox, oy + 22, text_sec, m_fb, (uint32_t)m_w);
+        kesh_draw_rounded_rect(m_fb, m_w, ox, card_y, card_w, 174, 12, is_dark ? 0x00232736 : 0x00FFFFFF);
+        draw_string("Interface animations", ox + 16, card_y + 18, text_primary, m_fb, (uint32_t)m_w);
+        draw_string("Theme fades, navigation and selection transitions", ox + 16, card_y + 38, text_sec, m_fb, (uint32_t)m_w);
+        int sx = ox + card_w - 68, sy = card_y + 18;
+        kesh_draw_rounded_rect(m_fb, m_w, sx, sy, 48, 26, 13, m_settings.animations_enabled ? accent : (is_dark ? 0xFF353C4E : 0xFFD0D4DE));
+        kesh_draw_rounded_rect(m_fb, m_w, m_settings.animations_enabled ? sx + 25 : sx + 3, sy + 3, 20, 20, 10, 0xFFFFFFFF);
+        draw_string("Transition speed", ox + 16, card_y + 83, text_primary, m_fb, (uint32_t)m_w);
+        char speed[8]; int_to_str(m_settings.animation_speed, speed, sizeof(speed));
+        draw_string(speed, ox + card_w - 52, card_y + 83, accent, m_fb, (uint32_t)m_w);
+        int slider_x = ox + 16, slider_w = card_w - 32, slider_y = card_y + 112;
+        kesh_draw_rounded_rect(m_fb, m_w, slider_x, slider_y, slider_w, 6, 3, is_dark ? 0xFF141620 : 0xFFD8DCE5);
+        int fill = slider_w * (m_settings.animation_speed - 20) / 80;
+        kesh_draw_rounded_rect(m_fb, m_w, slider_x, slider_y, fill, 6, 3, accent);
+        kesh_draw_rounded_rect(m_fb, m_w, slider_x + fill - 8, slider_y - 6, 16, 16, 8, 0xFFFFFFFF);
+    }
+
+    void render_tab_system(int ox, int oy) {
+        bool is_dark = (m_settings.dark_mode != 0);
+        uint32_t text_primary = is_dark ? 0xFFFFFFFF : 0xFF1D1D1F;
+        uint32_t text_sec = is_dark ? 0xFF8E95A5 : 0xFF6E6E73;
+        uint32_t accent = get_accent();
+        int card_w = m_w - (ox + 24), card_y = oy + 55;
+        draw_string("System", ox, oy, text_primary, m_fb, (uint32_t)m_w);
+        draw_string("Small details that make the workspace feel personal", ox, oy + 22, text_sec, m_fb, (uint32_t)m_w);
+        kesh_draw_rounded_rect(m_fb, m_w, ox, card_y, card_w, 248, 12, is_dark ? 0x00232736 : 0x00FFFFFF);
+        draw_string("Interface spacing", ox + 16, card_y + 18, text_primary, m_fb, (uint32_t)m_w);
+        draw_string("Choose a more compact or comfortable layout", ox + 16, card_y + 38, text_sec, m_fb, (uint32_t)m_w);
+        int bw = (card_w - 46) / 2, by = card_y + 64;
+        kesh_draw_rounded_rect(m_fb, m_w, ox + 16, by, bw, 40, 8, m_settings.interface_density == 0 ? accent : (is_dark ? 0x002D3346 : 0x00E4E7EE));
+        kesh_draw_rounded_rect(m_fb, m_w, ox + 30 + bw, by, bw, 40, 8, m_settings.interface_density == 1 ? accent : (is_dark ? 0x002D3346 : 0x00E4E7EE));
+        draw_string("Compact", ox + 16 + (bw - font_text_width("Compact")) / 2, by + 12, m_settings.interface_density == 0 ? 0xFFFFFFFF : text_primary, m_fb, (uint32_t)m_w);
+        draw_string("Comfortable", ox + 30 + bw + (bw - font_text_width("Comfortable")) / 2, by + 12, m_settings.interface_density == 1 ? 0xFFFFFFFF : text_primary, m_fb, (uint32_t)m_w);
+        draw_string("Show seconds in clock", ox + 16, card_y + 132, text_primary, m_fb, (uint32_t)m_w);
+        draw_string("Use a more precise taskbar clock", ox + 16, card_y + 152, text_sec, m_fb, (uint32_t)m_w);
+        int sx = ox + card_w - 68, sy = card_y + 132;
+        kesh_draw_rounded_rect(m_fb, m_w, sx, sy, 48, 26, 13, m_settings.show_seconds ? accent : (is_dark ? 0xFF353C4E : 0xFFD0D4DE));
+        kesh_draw_rounded_rect(m_fb, m_w, m_settings.show_seconds ? sx + 25 : sx + 3, sy + 3, 20, 20, 10, 0xFFFFFFFF);
+        draw_string("Liquid Glass", ox + 16, card_y + 170, text_primary, m_fb, (uint32_t)m_w);
+        draw_string("Optional blur for panels; turn it off for maximum FPS", ox + 16, card_y + 190, text_sec, m_fb, (uint32_t)m_w);
+        sy = card_y + 170;
+        kesh_draw_rounded_rect(m_fb, m_w, sx, sy, 48, 26, 13, m_settings.liquid_glass ? accent : (is_dark ? 0xFF353C4E : 0xFFD0D4DE));
+        kesh_draw_rounded_rect(m_fb, m_w, m_settings.liquid_glass ? sx + 25 : sx + 3, sy + 3, 20, 20, 10, 0xFFFFFFFF);
     }
 };
 
