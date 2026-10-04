@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
-ROOT="/home/danila/Рабочий стол/keshos"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SYSROOT="$ROOT/toolchain/musl"
 OUT="$ROOT/ports_bin"
 mkdir -p "$OUT"
+
+if [[ ! -f "$SYSROOT/lib/libc.a" ]]; then
+    echo "KeshOS musl sysroot is missing: $SYSROOT" >&2
+    exit 2
+fi
 
 echo "Building Port 0: hello.elf..."
 clang --target=x86_64-unknown-linux-musl --sysroot="$SYSROOT" -isystem "$SYSROOT/include" -O2 \
