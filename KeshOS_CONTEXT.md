@@ -411,3 +411,44 @@ Implemented V4 debugging/fix path:
 - QEMU low-level interrupt/reset trace capture.
 
 No gate is marked complete from this debugging pass. Runtime proof remains required on the user's actual CachyOS/QEMU environment.
+
+
+## 2026-10-04 — OpenFyde Chromium UI / OzoneKesh port
+
+**Goal:** port the native Chromium/OpenFyde graphics and shell stack to KeshOS
+without importing Blink/V8/content or the Linux/ChromiumOS kernel.
+
+**Pinned upstream:** `openFyde/chromium` branch `openfyde-r144-dev`, commit
+`493c46885be032faa677b4c166e06c7e85a0c396`.
+
+**Dedicated branch:** `port/openfyde-ozone-kesh`.
+
+**Implemented on this branch:**
+- additive Chromium `ozone_extra_path` overlay registering platform `kesh`;
+- Kesh framebuffer backend using existing `/dev/fb0` mmap/ioctl support;
+- software Skia SurfaceOzoneCanvas presentation into the KeshOS framebuffer;
+- Kesh PlatformWindow + basic screen/window manager;
+- KeshEventSource reading existing `/dev/input/event0` and `event1`;
+- Chromium KeyEvent/MouseEvent translation using Chromium evdev key converters;
+- dedicated GN target toolchain targeting `x86_64-unknown-linux-musl` with the
+  KeshOS sysroot;
+- build preparation and smoke-build scripts;
+- compatibility audit of `kernel/linux_syscall.c`.
+
+**Key finding:** KeshOS already has most primitives needed by Chromium's Linux
+base message loop, including epoll, eventfd, clone/futex, VM syscalls, clocks,
+poll, memfd and file-descriptor I/O. Chromium r144 MessagePumpEpoll therefore
+has a plausible path without new kernel work.
+
+**Current deliberate bootstrap:** Chromium is compiled with Linux/POSIX build
+assumptions because KeshOS already exposes that musl-compatible syscall ABI,
+but runtime graphics/input use the new native Ozone platform `kesh`. This is
+not a Linux-kernel dependency.
+
+**Kernel status:** no kernel/user ABI files were modified for this port yet.
+
+**Next executable milestone:** build upstream `ui/ozone/demo:ozone_demo` with
+`--disable-gpu --ozone-platform=kesh`, stage it as
+`ports_bin/ozone_demo.elf`, boot it on real KeshOS, then fix only the concrete
+syscall/Ozone failures it exposes. Aura and Views come after that, Ash after
+Views.
