@@ -41,3 +41,21 @@ source_set("kesh") {
     "//ui/platform_window",
   ]
 }
+
+# First on-device milestone. This intentionally links much less Chromium code
+# than ui/ozone/demo:ozone_demo: no GL renderer, no Mojo initialization, no
+# tracing setup and no Blink/V8/content. It still uses Chromium base, Skia,
+# PlatformWindow and the real Ozone platform selection/dispatch machinery.
+executable("kesh_smoke") {
+  sources = [ "kesh_smoke.cc" ]
+
+  deps = [
+    "//base",
+    "//skia",
+    "//ui/events",
+    "//ui/gfx",
+    "//ui/gfx/geometry",
+    "//ui/ozone",
+    "//ui/platform_window",
+  ]
+}
