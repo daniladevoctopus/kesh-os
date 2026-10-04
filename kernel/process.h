@@ -62,6 +62,7 @@ typedef struct thread {
     uint64_t wake_at_ms;
     uint64_t fs_base;
     uint64_t clear_child_tid;
+    char linux_name[16];
     user_context_t ctx;
 } thread_t;
 
@@ -95,6 +96,7 @@ typedef struct process {
     int controlling_pty;
     int process_group;
     int is_linux_abi;
+    int linux_dumpable;
     uint64_t fs_base;
 } process_t;
 
@@ -143,6 +145,10 @@ int process_signal_group(int caller_pid, int process_group, int signal);
 int process_current_id(void);
 int process_current_thread_id(void);
 const char *process_current_name(void);
+int process_set_current_thread_name(const char *name);
+int process_get_current_thread_name(char out[16]);
+int process_set_current_dumpable(int dumpable);
+int process_get_current_dumpable(void);
 uint32_t process_current_permissions(void);
 int process_has_permission(uint32_t permission);
 int process_revoke_permissions(int caller_pid, int target_pid, uint32_t mask);

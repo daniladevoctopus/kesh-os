@@ -463,3 +463,27 @@ Views.
 - Added early sysroot checks for `linux/fb.h`, `linux/input.h` and static musl `libc.a` before starting an expensive Chromium build.
 - No KeshOS kernel or userspace ABI source was changed in this pass.
 - Next milestone remains the first actual `ozone_demo` build/run, then concrete fixes from compiler/runtime errors before moving to Aura/Views.
+
+
+### 2026-10-04 — First conservative kernel change for Chromium/OpenFyde compatibility
+
+The user explicitly allowed small, gradual KeshOS kernel changes for the port.
+
+Implemented on `port/openfyde-ozone-kesh`:
+- added Linux ABI syscall `prctl(2)` number 157;
+- implemented `PR_SET_NAME` / `PR_GET_NAME` with per-thread 16-byte Linux-style names;
+- implemented `PR_SET_DUMPABLE` / `PR_GET_DUMPABLE` as per-process state;
+- Linux-created threads inherit the current thread name;
+- new processes initialize the main thread name from the process name and default to dumpable=1.
+
+Why this change was chosen:
+- OpenFyde Chromium r144 directly calls `prctl(PR_SET_NAME)` in
+  `base/threading/platform_thread_linux.cc`;
+- its POSIX stack-trace code calls `PR_GET_DUMPABLE` and
+  `PR_SET_DUMPABLE`;
+- this closes a concrete Chromium base ABI gap without changing scheduler,
+  graphics, memory-management or security-permission architecture.
+
+Signals are deliberately NOT expanded in the same commit. KeshOS still has
+stub `rt_sigaction` / `rt_sigprocmask`, and proper signal semantics will be
+handled separately rather than pretending a broad signal implementation exists.

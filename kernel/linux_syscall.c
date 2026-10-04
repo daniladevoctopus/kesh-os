@@ -70,6 +70,7 @@
 #define LINUX_SYS_GETGID         104
 #define LINUX_SYS_GETEUID        107
 #define LINUX_SYS_GETEGID        108
+#define LINUX_SYS_PRCTL          157
 #define LINUX_SYS_ARCH_PRCTL     158
 #define LINUX_SYS_GETTID         186
 #define LINUX_SYS_TKILL          200
@@ -118,6 +119,12 @@
 #define ARCH_GET_GS 0x1004
 #define MSR_FS_BASE 0xC0000100
 #define MSR_GS_BASE 0xC0000101
+
+/* prctl(2) options needed by Chromium base on Linux-like userspace. */
+#define LINUX_PR_GET_DUMPABLE 3
+#define LINUX_PR_SET_DUMPABLE 4
+#define LINUX_PR_SET_NAME     15
+#define LINUX_PR_GET_NAME     16
 
 static inline uint64_t linux_rdmsr(uint32_t msr) {
     uint32_t low, high;
@@ -586,6 +593,31 @@ int64_t linux_syscall_dispatcher(uint64_t num, uint64_t a1, uint64_t a2, uint64_
         }
 
         /* arch_prctl(code, addr) */
+        case LINUX_SYS_PRCTL: {
+            switch ((int)a1) {
+                case LINUX_PR_SET_NAME: {
+                    if (!a2) return -L_EFAULT;
+                    char name[16];
+                    if (linux_copy_string(name, sizeof(name), a2) != 0) return -L_EFAULT;
+                    return process_set_current_thread_name(name) == 0 ? 0 : -L_ESRCH;
+                }
+                case LINUX_PR_GET_NAME: {
+                    if (!a2) return -L_EFAULT;
+                    char name[16];
+                    if (process_get_current_thread_name(name) != 0) return -L_ESRCH;
+                    return linux_copy_out(a2, name, sizeof(name)) == 0 ? 0 : -L_EFAULT;
+                }
+                case LINUX_PR_GET_DUMPABLE: {
+                    int dumpable = process_get_current_dumpable();
+                    return dumpable >= 0 ? dumpable : -L_ESRCH;
+                }
+                case LINUX_PR_SET_DUMPABLE:
+                    return process_set_current_dumpable((int)a2) == 0 ? 0 : -L_EINVAL;
+                default:
+                    return -L_EINVAL;
+            }
+        }
+
         case LINUX_SYS_ARCH_PRCTL: {
             int code = (int)a1;
             uint64_t addr = a2;

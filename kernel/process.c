@@ -35,6 +35,18 @@ static int g_active_thread_idx = 0;
 static process_t* process_spawn_elf_with_permissions(const char *name, const void *elf_data,
                                                       uint64_t size, uint32_t permissions, int trusted_root);
 
+static void process_copy_linux_name(char out[16], const char *name) {
+    int i = 0;
+    if (name) {
+        while (name[i] && i < 15) {
+            out[i] = name[i];
+            ++i;
+        }
+    }
+    out[i] = '\0';
+    for (++i; i < 16; ++i) out[i] = '\0';
+}
+
 void process_init(void) {
     for (int i = 0; i < MAX_PROCESSES; i++) {
         g_processes[i].id = i;
@@ -45,6 +57,7 @@ void process_init(void) {
         g_processes[i].credentials.uid = KESH_UID_USER;
         g_processes[i].credentials.gid = KESH_UID_USER;
         g_processes[i].credentials.groups = 0;
+        g_processes[i].linux_dumpable = 1;
         g_processes[i].active_thread_idx = 0;
         g_processes[i].vm_next_base = PROCESS_VM_BASE;
         g_processes[i].heap_base = PROCESS_HEAP_BASE;
@@ -60,6 +73,7 @@ void process_init(void) {
             g_processes[i].threads[t].wake_at_ms = 0;
             g_processes[i].threads[t].fs_base = 0;
             g_processes[i].threads[t].clear_child_tid = 0;
+            g_processes[i].threads[t].linux_name[0] = '\0';
         }
     }
     g_active_proc_idx = -1;
@@ -105,6 +119,7 @@ static void process_release_resources(process_t *proc) {
     proc->credentials.gid = KESH_UID_USER;
     proc->credentials.groups = 0;
     proc->is_linux_abi = 0;
+    proc->linux_dumpable = 1;
     proc->fs_base = 0;
     proc->ctx.rip = 0;
     proc->ctx.rsp = 0;
@@ -117,6 +132,7 @@ static void process_release_resources(process_t *proc) {
         proc->threads[t].wake_at_ms = 0;
         proc->threads[t].fs_base = 0;
         proc->threads[t].clear_child_tid = 0;
+        proc->threads[t].linux_name[0] = '\0';
         proc->threads[t].ctx.cr3 = 0;
         proc->threads[t].ctx.is_started = 0;
     }
@@ -234,6 +250,7 @@ static process_t* process_spawn_elf_with_permissions(const char *name, const voi
     proc->credentials.uid = trusted_root ? KESH_UID_ROOT : KESH_UID_USER;
     proc->credentials.gid = trusted_root ? KESH_UID_ROOT : KESH_UID_USER;
     proc->credentials.groups = 0;
+    proc->linux_dumpable = 1;
     proc->state = PROCESS_STATE_READY;
     proc->controlling_pty = -1;
     proc->process_group = proc->id;
@@ -258,10 +275,12 @@ static process_t* process_spawn_elf_with_permissions(const char *name, const voi
         proc->threads[t].wake_at_ms = 0;
         proc->threads[t].fs_base = 0;
         proc->threads[t].clear_child_tid = 0;
+        proc->threads[t].linux_name[0] = '\0';
     }
     proc->threads[0].tid = 0;
     proc->threads[0].owner_pid = proc->id;
     proc->threads[0].state = THREAD_STATE_READY;
+    process_copy_linux_name(proc->threads[0].linux_name, proc->name);
     proc->threads[0].ctx = proc->ctx;
     proc->active_thread_idx = 0;
     proc->vm_next_base = PROCESS_VM_BASE;
@@ -600,6 +619,44 @@ const char *process_current_name(void) {
     return proc->name;
 }
 
+int process_set_current_thread_name(const char *name) {
+    if (!name || g_active_proc_idx < 0 || g_active_proc_idx >= MAX_PROCESSES ||
+        g_active_thread_idx < 0 || g_active_thread_idx >= MAX_THREADS_PER_PROCESS) return -1;
+    process_t *proc = &g_processes[g_active_proc_idx];
+    thread_t *thread = &proc->threads[g_active_thread_idx];
+    if (proc->state == PROCESS_STATE_UNUSED || proc->state == PROCESS_STATE_EXITED ||
+        thread->state == THREAD_STATE_UNUSED || thread->state == THREAD_STATE_EXITED) return -1;
+    process_copy_linux_name(thread->linux_name, name);
+    return 0;
+}
+
+int process_get_current_thread_name(char out[16]) {
+    if (!out || g_active_proc_idx < 0 || g_active_proc_idx >= MAX_PROCESSES ||
+        g_active_thread_idx < 0 || g_active_thread_idx >= MAX_THREADS_PER_PROCESS) return -1;
+    process_t *proc = &g_processes[g_active_proc_idx];
+    thread_t *thread = &proc->threads[g_active_thread_idx];
+    if (proc->state == PROCESS_STATE_UNUSED || proc->state == PROCESS_STATE_EXITED ||
+        thread->state == THREAD_STATE_UNUSED || thread->state == THREAD_STATE_EXITED) return -1;
+    process_copy_linux_name(out, thread->linux_name[0] ? thread->linux_name : proc->name);
+    return 0;
+}
+
+int process_set_current_dumpable(int dumpable) {
+    if ((dumpable != 0 && dumpable != 1) ||
+        g_active_proc_idx < 0 || g_active_proc_idx >= MAX_PROCESSES) return -1;
+    process_t *proc = &g_processes[g_active_proc_idx];
+    if (proc->state == PROCESS_STATE_UNUSED || proc->state == PROCESS_STATE_EXITED) return -1;
+    proc->linux_dumpable = dumpable;
+    return 0;
+}
+
+int process_get_current_dumpable(void) {
+    if (g_active_proc_idx < 0 || g_active_proc_idx >= MAX_PROCESSES) return -1;
+    process_t *proc = &g_processes[g_active_proc_idx];
+    if (proc->state == PROCESS_STATE_UNUSED || proc->state == PROCESS_STATE_EXITED) return -1;
+    return proc->linux_dumpable ? 1 : 0;
+}
+
 uint32_t process_current_permissions(void) {
     if (g_active_proc_idx < 0 || g_active_proc_idx >= MAX_PROCESSES) return 0;
     process_t *proc = &g_processes[g_active_proc_idx];
@@ -675,6 +732,11 @@ int process_create_thread(uint64_t entry_point) {
     thread->state = THREAD_STATE_READY;
     thread->stack_base = stack_base;
     thread->stack_pages = stack_pages;
+    process_copy_linux_name(
+        thread->linux_name,
+        (g_active_thread_idx >= 0 && g_active_thread_idx < MAX_THREADS_PER_PROCESS)
+            ? proc->threads[g_active_thread_idx].linux_name
+            : proc->name);
     thread->ctx = proc->threads[0].ctx;
     thread->ctx.rip = entry_point;
     thread->ctx.rsp = stack_base + (uint64_t)stack_pages * PAGE_SIZE - 16ULL;
@@ -732,6 +794,11 @@ int process_create_linux_thread(uint64_t rip, uint64_t rsp, uint64_t fs_base, ui
     thread->wake_at_ms = 0;
     thread->fs_base = fs_base;
     thread->clear_child_tid = 0;
+    process_copy_linux_name(
+        thread->linux_name,
+        (g_active_thread_idx >= 0 && g_active_thread_idx < MAX_THREADS_PER_PROCESS)
+            ? proc->threads[g_active_thread_idx].linux_name
+            : proc->name);
 
     thread->ctx = proc->threads[0].ctx;
     thread->ctx.cr3 = proc->pml4_phys;
