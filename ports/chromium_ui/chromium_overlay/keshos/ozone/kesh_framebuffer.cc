@@ -6,12 +6,12 @@
 #include <cstring>
 
 #include <fcntl.h>
-#include <linux/fb.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
 
 #include "base/logging.h"
+#include "keshos/ozone/kesh_linux_abi.h"
 #include "third_party/skia/include/core/SkPixmap.h"
 
 namespace ui {
@@ -35,10 +35,10 @@ bool KeshFramebuffer::Initialize() {
     return false;
   }
 
-  fb_var_screeninfo variable = {};
-  fb_fix_screeninfo fixed = {};
-  if (ioctl(fd_, FBIOGET_VSCREENINFO, &variable) != 0 ||
-      ioctl(fd_, FBIOGET_FSCREENINFO, &fixed) != 0) {
+  kesh_abi::FbVarScreenInfo variable = {};
+  kesh_abi::FbFixScreenInfo fixed = {};
+  if (ioctl(fd_, kesh_abi::kFbIoGetVScreenInfo, &variable) != 0 ||
+      ioctl(fd_, kesh_abi::kFbIoGetFScreenInfo, &fixed) != 0) {
     PLOG(ERROR) << "OzoneKesh: framebuffer ioctl failed";
     return false;
   }
@@ -80,8 +80,6 @@ void KeshFramebuffer::Blit(const SkPixmap& source,
   if (copy.IsEmpty())
     return;
 
-  // Clip against the destination framebuffer while retaining matching source
-  // coordinates.
   int src_x = copy.x();
   int src_y = copy.y();
   int dst_x = destination_origin.x() + src_x;
