@@ -12,7 +12,6 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 KESH_ROOT="$(cd "$HERE/../.." && pwd)"
 WORKSPACE="${1:-$KESH_ROOT/../openfyde-kesh-work}"
 DEPOT_TOOLS="${DEPOT_TOOLS:-$WORKSPACE/depot_tools}"
-SRC="$WORKSPACE/src"
 
 mkdir -p "$WORKSPACE"
 WORKSPACE="$(cd "$WORKSPACE" && pwd)"
@@ -51,8 +50,7 @@ echo "[3/4] Syncing pinned OpenFyde revision $PIN ..."
 gclient sync \
   --revision "src@$PIN" \
   --no-history \
-  --nohooks \
-  --delete_unversioned_trees=false
+  --nohooks
 
 if [[ ! -d "$SRC/.git" ]]; then
   echo "OpenFyde source was not created at $SRC" >&2
