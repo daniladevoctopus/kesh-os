@@ -33,9 +33,21 @@ if (( ${#missing[@]} != 0 )); then
   echo "Missing host tools: ${missing[*]}"
   echo
   echo "On CachyOS/Arch install the normal build set with:"
-  echo "  sudo pacman -S --needed base-devel git python ninja clang lld cmake xorriso"
+  echo "  sudo pacman -S --needed base-devel git python ninja clang lld llvm cmake xorriso"
   exit 2
 fi
+
+# The repository records BearSSL as a real gitlink. Older KeshOS history lost
+# .gitmodules, so the port branch restores the metadata and initializes the
+# exact pinned BearSSL commit before attempting either kernel or ISO builds.
+echo "[0/5] Initializing KeshOS third-party source..."
+git submodule sync -- src/drivers/net/bearssl
+git submodule update --init --recursive --depth 1 src/drivers/net/bearssl
+if [[ ! -f src/drivers/net/bearssl/inc/bearssl.h ]]; then
+  echo "BearSSL checkout is incomplete." >&2
+  exit 21
+fi
+echo "BearSSL: $(git -C src/drivers/net/bearssl rev-parse HEAD)"
 
 if [[ ! -f "$KESH_ROOT/toolchain/musl/lib/libc.a" ]]; then
   echo "KeshOS musl sysroot is missing: $KESH_ROOT/toolchain/musl"
@@ -44,10 +56,10 @@ if [[ ! -f "$KESH_ROOT/toolchain/musl/lib/libc.a" ]]; then
 fi
 
 if [[ ! -d "$SRC/.git" ]]; then
-  echo "[1/4] OpenFyde source is not present. Bootstrapping it now."
+  echo "[1/5] OpenFyde source is not present. Bootstrapping it now."
   "$HERE/bootstrap_openfyde.sh" "$WORKSPACE"
 else
-  echo "[1/4] Reusing OpenFyde checkout."
+  echo "[1/5] Reusing OpenFyde checkout."
   actual="$(git -C "$SRC" rev-parse HEAD)"
   if [[ "$actual" != "$PIN" ]]; then
     echo "OpenFyde is at $actual but this port is pinned to $PIN."
@@ -58,11 +70,11 @@ fi
 
 # Keep target parallelism low by default so a 2-core/4-thread development
 # machine remains usable during the first cross-build.
-echo "[2/4] Building minimal Chromium/Skia OzoneKesh smoke app..."
+echo "[2/5] Building minimal Chromium/Skia OzoneKesh smoke app..."
 KESH_CHROMIUM_JOBS="${KESH_CHROMIUM_JOBS:-2}" \
   "$HERE/build_smoke.sh" "$SRC"
 
-echo "[3/4] Building KeshOS + bootable ISO..."
+echo "[3/5] Building KeshOS + bootable ISO..."
 ./build.sh
 
 if [[ ! -f build/keshos.iso ]]; then
@@ -71,10 +83,13 @@ if [[ ! -f build/keshos.iso ]]; then
 fi
 
 if [[ -f tools/verify_iso.py ]]; then
+  echo "[4/5] Verifying ISO payload..."
   python3 tools/verify_iso.py
+else
+  echo "[4/5] ISO verifier not present, skipping extra verification."
 fi
 
-echo "[4/4] Done."
+echo "[5/5] Done."
 echo
 echo "=============================================="
 echo " FIRST OZONEKESH IMAGE READY"
