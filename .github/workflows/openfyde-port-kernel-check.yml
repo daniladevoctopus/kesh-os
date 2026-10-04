@@ -14,12 +14,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: false
+          submodules: recursive
 
       - name: Install build tools
         run: |
           sudo apt-get update
           sudo apt-get install -y clang llvm lld ninja-build python3
+
+      - name: Verify BearSSL pin
+        run: |
+          test -f src/drivers/net/bearssl/inc/bearssl.h
+          echo "BearSSL $(git -C src/drivers/net/bearssl rev-parse HEAD)"
 
       - name: Generate Ninja graph
         run: python3 generate_ninja.py
