@@ -1,0 +1,22 @@
+# Bootstrap build identity. KeshOS currently uses a Linux-musl-compatible
+# userspace toolchain, while the runtime Ozone backend is explicitly "kesh".
+target_os = "linux"
+target_cpu = "x64"
+
+use_ozone = true
+ozone_auto_platforms = false
+ozone_extra_path = "//keshos/ozone_extra.gni"
+ozone_platform = "kesh"
+
+ozone_platform_headless = false
+ozone_platform_drm = false
+ozone_platform_wayland = false
+ozone_platform_x11 = false
+ozone_platform_cast = false
+ozone_platform_flatland = false
+
+# First milestone is software rendering.
+enable_vulkan = false
+
+is_component_build = false
+is_debug = true

@@ -1,0 +1,38 @@
+# Copyright 2026 SneakDeak Technologies / KeshOS contributors.
+# Chromium interfaces are used under Chromium's BSD-style license.
+
+source_set("kesh") {
+  sources = [
+    "kesh_framebuffer.cc",
+    "kesh_framebuffer.h",
+    "kesh_screen.cc",
+    "kesh_screen.h",
+    "kesh_surface_factory.cc",
+    "kesh_surface_factory.h",
+    "kesh_window.cc",
+    "kesh_window.h",
+    "kesh_window_manager.cc",
+    "kesh_window_manager.h",
+    "ozone_platform_kesh.cc",
+    "ozone_platform_kesh.h",
+  ]
+
+  defines = [ "OZONE_IMPLEMENTATION" ]
+
+  deps = [
+    "//base",
+    "//skia",
+    "//ui/base",
+    "//ui/base/cursor",
+    "//ui/base/ime",
+    "//ui/display",
+    "//ui/events",
+    "//ui/events/ozone/layout",
+    "//ui/events/platform",
+    "//ui/gfx",
+    "//ui/gfx/geometry",
+    "//ui/ozone:ozone_base",
+    "//ui/ozone/common",
+    "//ui/platform_window",
+  ]
+}
