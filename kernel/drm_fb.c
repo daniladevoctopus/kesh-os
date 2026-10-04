@@ -10,21 +10,48 @@ extern uint32_t g_screen_w, g_screen_h, g_screen_pitch, g_screen_bpp;
 typedef struct {
     int is_drm;
     int pid;
+    uint32_t open_count;
 } drm_fb_device_t;
 
-static drm_fb_device_t g_fb0_dev = { .is_drm = 0, .pid = 0 };
-static drm_fb_device_t g_card0_dev = { .is_drm = 1, .pid = 0 };
+static drm_fb_device_t g_fb0_dev = { .is_drm = 0, .pid = -1, .open_count = 0 };
+static drm_fb_device_t g_card0_dev = { .is_drm = 1, .pid = -1, .open_count = 0 };
 
 void drm_fb_init(void) {
-    /* Ready */
+    g_fb0_dev.pid = -1;
+    g_fb0_dev.open_count = 0;
+    g_card0_dev.pid = -1;
+    g_card0_dev.open_count = 0;
+}
+
+int drm_fb_userspace_owned(void) {
+    return g_fb0_dev.open_count != 0;
+}
+
+int drm_fb_owner_pid(void) {
+    return g_fb0_dev.open_count ? g_fb0_dev.pid : -1;
 }
 
 int drm_fb_open_fb0(int pid) {
-    return fd_create_custom(pid, FD_KIND_DRM_FB, &g_fb0_dev, FD_OPEN_READ | FD_OPEN_WRITE);
+    if (pid < 0) return -1;
+
+    /* A direct scanout process owns fb0 until its last independently opened
+     * fb0 FD is released. Duplicating one FD does not increment open_count,
+     * because fd_close() calls drm_fb_release() only when the shared FD object
+     * loses its last reference. */
+    if (g_fb0_dev.open_count && g_fb0_dev.pid != pid) return -1;
+
+    int fd = fd_create_custom(pid, FD_KIND_DRM_FB, &g_fb0_dev,
+                              FD_OPEN_READ | FD_OPEN_WRITE);
+    if (fd < 0) return fd;
+
+    if (g_fb0_dev.open_count == 0) g_fb0_dev.pid = pid;
+    g_fb0_dev.open_count++;
+    return fd;
 }
 
 int drm_fb_open_card0(int pid) {
-    return fd_create_custom(pid, FD_KIND_DRM_FB, &g_card0_dev, FD_OPEN_READ | FD_OPEN_WRITE);
+    return fd_create_custom(pid, FD_KIND_DRM_FB, &g_card0_dev,
+                            FD_OPEN_READ | FD_OPEN_WRITE);
 }
 
 int drm_fb_ioctl(void *custom_ptr, uint64_t req, uint64_t arg) {
@@ -99,16 +126,18 @@ int drm_fb_ioctl(void *custom_ptr, uint64_t req, uint64_t arg) {
 }
 
 uint64_t drm_fb_mmap(int pid, size_t len, uint32_t prot) {
-    (void)pid;
     if (!g_fb_vram || len == 0) return 0;
 
-    uint64_t total_size = (uint64_t)g_screen_pitch * (uint64_t)g_screen_h;
-    uint64_t actual_len = (uint64_t)len > total_size ? total_size : (uint64_t)len;
-    uint64_t num_pages = (actual_len + 4095ULL) / 4096ULL;
+    /* fb0 mappings are direct scanout mappings. Refuse a stale/unowned mmap or
+     * a mapping from a different process instead of exposing VRAM broadly. */
+    if (!g_fb0_dev.open_count || g_fb0_dev.pid != pid) return 0;
 
-    /* 64 MiB covers 4K 32-bpp framebuffers with headroom. More importantly,
-     * never silently return a shorter mapping than userspace requested: doing
-     * so made a later framebuffer write turn into a mysterious page fault. */
+    uint64_t total_size = (uint64_t)g_screen_pitch * (uint64_t)g_screen_h;
+    if ((uint64_t)len > total_size) return 0;
+    uint64_t num_pages = ((uint64_t)len + 4095ULL) / 4096ULL;
+
+    /* 64 MiB covers 4K 32-bpp framebuffers with headroom. Never silently
+     * return a shorter mapping than userspace requested. */
     #define MAX_FB_PAGES 16384
     if (num_pages == 0 || num_pages > MAX_FB_PAGES) return 0;
 
@@ -124,5 +153,9 @@ uint64_t drm_fb_mmap(int pid, size_t len, uint32_t prot) {
 }
 
 void drm_fb_release(void *custom_ptr) {
-    (void)custom_ptr;
+    drm_fb_device_t *dev = (drm_fb_device_t *)custom_ptr;
+    if (!dev || dev->is_drm) return;
+
+    if (dev->open_count) dev->open_count--;
+    if (dev->open_count == 0) dev->pid = -1;
 }
