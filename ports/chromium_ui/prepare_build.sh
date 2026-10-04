@@ -19,18 +19,8 @@ if [[ ! -d "$SYSROOT_REAL/include" || ! -d "$SYSROOT_REAL/lib" ]]; then
   exit 3
 fi
 
-# OzoneKesh M1/M2 intentionally consumes the Linux-compatible ABI headers that
-# KeshOS already implements in its own kernel. Fail before a multi-hour
-# Chromium build if the sysroot is incomplete.
-for required in \
-  "$SYSROOT_REAL/include/linux/fb.h" \
-  "$SYSROOT_REAL/include/linux/input.h"; do
-  if [[ ! -f "$required" ]]; then
-    echo "KeshOS sysroot is missing required compatibility header: $required"
-    exit 31
-  fi
-done
-
+# OzoneKesh now carries the tiny framebuffer/input ABI definitions it needs,
+# so the KeshOS sysroot does not need Linux kernel UAPI header packages.
 if [[ ! -e "$SYSROOT_REAL/lib/libc.a" ]]; then
   echo "KeshOS sysroot is missing static musl libc: $SYSROOT_REAL/lib/libc.a"
   exit 32
@@ -43,8 +33,15 @@ if [[ -z "$CLANG" ]]; then
 fi
 CLANG_BIN="$(dirname "$(readlink -f "$CLANG")")"
 
+for tool in clang clang++ llvm-ar llvm-nm llvm-readelf; do
+  if [[ ! -x "$CLANG_BIN/$tool" ]] && ! command -v "$tool" >/dev/null 2>&1; then
+    echo "required LLVM tool not found: $tool"
+    exit 41
+  fi
+done
+
 # The KeshOS checkout path may contain spaces/Cyrillic. Give Ninja a stable
-# no-space path.
+# no-space sysroot path.
 ln -sfn "$SYSROOT_REAL" "$SYSROOT_LINK"
 
 "$HERE/apply_overlay.sh" "$CHROMIUM"
@@ -70,12 +67,17 @@ ozone_platform_x11 = false
 ozone_platform_cast = false
 ozone_platform_flatland = false
 
+# First milestone: software Skia only. Keep the binary small enough for the
+# current KeshOS loader and avoid GPU/driver dependencies until Ozone works.
 enable_vulkan = false
 is_component_build = false
-is_debug = true
-symbol_level = 1
+is_debug = false
+symbol_level = 0
 treat_warnings_as_errors = false
+use_custom_libcxx = true
 
+# Chromium's normal Linux Rust target is GNU. Ozone demo does not need Rust and
+# keeping it disabled removes another cross-toolchain variable for bring-up.
 enable_rust = false
 enable_rust_cxx = false
 EOF
@@ -84,6 +86,8 @@ echo "Prepared: $CHROMIUM/out/KeshOS/args.gn"
 echo "KeshOS sysroot: $SYSROOT_LINK -> $SYSROOT_REAL"
 echo "Clang tools: $CLANG_BIN"
 
+echo "OpenFyde source HEAD: $(git -C "$CHROMIUM" rev-parse HEAD 2>/dev/null || echo unknown)"
+
 if [[ "$DO_GEN" == "--gen" ]]; then
   GN=""
   if [[ -x "$CHROMIUM/buildtools/linux64/gn" ]]; then
@@ -91,7 +95,8 @@ if [[ "$DO_GEN" == "--gen" ]]; then
   elif command -v gn >/dev/null 2>&1; then
     GN="$(command -v gn)"
   else
-    echo "GN was not found. Prepare Chromium DEPS/buildtools first."
+    echo "GN was not found. Chromium DEPS/buildtools are incomplete."
+    echo "Run ports/chromium_ui/bootstrap_openfyde.sh first."
     exit 5
   fi
 
