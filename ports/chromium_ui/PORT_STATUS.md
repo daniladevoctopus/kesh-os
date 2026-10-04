@@ -6,13 +6,16 @@ Status: DONE
 KeshOS already provides framebuffer/DRM-like devices, evdev, FDs/poll,
 threads, clocks, VM mapping, IPC and a musl userspace.
 
+Pinned OpenFyde Chromium revision:
+`493c46885be032faa677b4c166e06c7e85a0c396` (`openfyde-r144-dev`).
+
 ## M1 - OzoneKesh software display backend
 Status: INITIAL IMPLEMENTATION DONE
 
 Rendering path:
 
 ```
-Skia raster surface
+Chromium / Skia raster surface
   -> SurfaceOzoneCanvas::PresentCanvas
   -> KeshFramebuffer::Blit
   -> mmap(/dev/fb0)
@@ -22,76 +25,83 @@ Skia raster surface
 Implemented: OzonePlatformKesh, KeshWindowManager, KeshWindow, KeshScreen,
 KeshSurfaceFactory and KeshFramebuffer.
 
+The backend now carries its small KeshOS framebuffer/input ABI definitions in
+`kesh_linux_abi.h` instead of depending on Linux UAPI header packages.
+
 ## M2 - native input
 Status: INITIAL IMPLEMENTATION DONE
 
-KeshEventSource reads KeshOS `/dev/input/event0` and `event1`, translates
-evdev key codes with Chromium's own converters and dispatches KeyEvent,
-MouseEvent and MouseWheelEvent.
+KeshEventSource reads KeshOS `/dev/input/event0` and `event1`, translates the
+KeshOS evdev-compatible records with Chromium key converters and dispatches
+KeyEvent, MouseEvent and MouseWheelEvent.
 
 Current implementation polls every 4 ms on the UI thread. This is intentionally
-simple for bring-up and requires no kernel change.
+simple for first bring-up. Event-driven FD watching comes after the first frame.
 
 ## M3 - Chromium base / toolchain bridge
-Status: INITIAL AUDIT + TOOLCHAIN DONE
+Status: INITIAL IMPLEMENTATION DONE, RUNTIME VERIFICATION PENDING
 
-Found in the KeshOS Linux-compatible musl ABI:
+KeshOS' Linux-compatible musl ABI already contains the core primitives needed by
+Chromium base: clone/futex, VM syscalls, epoll/eventfd, poll, clocks, memfd,
+file I/O, ioctl, getrandom and AF_UNIX IPC.
 
-- clone/futex/thread primitives
-- mmap/mprotect/munmap
-- epoll/eventfd
-- poll/ppoll
-- clocks/sleep
-- memfd
-- open/read/write/ioctl
-- getrandom
-- AF_UNIX IPC
+Additional compatibility work on the port branch includes Chromium-required
+`prctl` thread-name/dumpable state and safer framebuffer mappings.
 
-OpenFyde r144 MessagePumpEpoll's core requirements line up with existing KeshOS
-epoll/eventfd/read/write paths.
+The custom GN toolchain targets `x86_64-unknown-linux-musl` only as a userspace
+ABI bridge. It explicitly uses the KeshOS musl sysroot and emits a static,
+non-PIE ET_EXEC binary because the KeshOS ELF loader rejects PT_INTERP,
+PT_DYNAMIC and W+X LOAD segments.
 
-Added `//keshos/toolchain:kesh_x64` so the target build uses
-`x86_64-unknown-linux-musl` and the KeshOS sysroot while host build tools stay
-native to CachyOS.
+## M4.0 - minimal Chromium-native visual smoke
+Status: READY FOR FIRST REAL CROSS-BUILD, NOT RUNTIME-VERIFIED
 
-No KeshOS kernel change has been made.
+The first target is now our deliberately small `//keshos/ozone:kesh_smoke`, not
+Chromium's heavier upstream ozone_demo. It avoids Blink, V8, Chrome, GL renderer
+and Mojo initialization while still exercising:
 
-## M4.0 - Ozone smoke executable
-Status: READY TO BUILD, NOT RUNTIME-VERIFIED
-
-Use Chromium's upstream `ui/ozone/demo:ozone_demo` first. It is a much smaller
-test than Aura/Views and can exercise:
-
-- OzoneKesh selection
+- Chromium `base::MessagePump` / timer
+- OpenFyde/Chromium Ozone platform selection
 - PlatformWindow creation
-- software Skia canvas
-- framebuffer presentation
-- keyboard/mouse dispatch
-- Chromium MessagePumpEpoll on KeshOS
+- Skia software rasterization
+- OzoneKesh framebuffer presentation
 
-Run:
+Expected visible result: a dark 900x560 Chromium/Skia test shell with an orange
+accent, three cards and a moving green heartbeat strip.
+
+Build everything with:
 
 ```bash
-./ports/chromium_ui/build_smoke.sh /path/to/openfyde/chromium
+./ports/chromium_ui/tomorrow_build.sh
 ```
 
-The script stages the result as `ports_bin/ozone_demo.elf`; KeshOS ISO
-packaging already copies `ports_bin/*.elf` into `/boot/apps/`.
+After booting `build/keshos.iso`, open KeshOS Terminal and run:
 
-Runtime args: `--disable-gpu --ozone-platform=kesh`.
+```text
+run /boot/apps/kesh_smoke.elf
+```
 
-## M4.1 - Aura smoke test
+The first source/dependency sync can be large and slow. Build parallelism
+defaults to 2 jobs for the current low-core development machine.
+
+## M4.1 - upstream ozone_demo
+Status: AFTER KESH_SMOKE
+
+Once the minimal smoke target is alive, build Chromium's upstream ozone_demo to
+exercise more of the stock Ozone renderer stack.
+
+## M4.2 - Aura smoke test
 Status: NOT STARTED
 
-Only after ozone_demo actually runs on KeshOS.
+Create a root Aura window and prove compositor/input routing through OzoneKesh.
 
-## M4.2 - Views smoke test
+## M4.3 - Views smoke test
 Status: NOT STARTED
 
-Target: a basic Views window rendered through Aura -> compositor -> OzoneKesh.
+Target: a basic Views widget rendered through Aura -> compositor -> OzoneKesh.
 
 ## M5 - Ash
 Status: NOT STARTED
 
-Order after Views works:
+Only after Views is stable:
 window management -> shelf -> launcher -> tray -> notifications.
