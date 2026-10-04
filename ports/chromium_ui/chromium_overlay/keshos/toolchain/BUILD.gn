@@ -1,0 +1,50 @@
+# Copyright 2026 SneakDeak Technologies / KeshOS contributors.
+#
+# KeshOS target toolchain for Chromium's GN build. Host-side generator tools
+# continue to use Chromium's normal Linux host toolchain.
+
+import("//build/toolchain/gcc_toolchain.gni")
+
+declare_args() {
+  # Must point to the KeshOS musl sysroot. Use a path without spaces.
+  keshos_sysroot = ""
+
+  # Directory containing clang, clang++, llvm-ar, llvm-nm and llvm-readelf.
+  keshos_clang_bin = "/usr/bin"
+}
+
+assert(keshos_sysroot != "", "Set keshos_sysroot in args.gn")
+
+gcc_toolchain("kesh_x64") {
+  cc = "$keshos_clang_bin/clang"
+  cxx = "$keshos_clang_bin/clang++"
+  ld = cxx
+  ar = "$keshos_clang_bin/llvm-ar"
+  nm = "$keshos_clang_bin/llvm-nm"
+  readelf = "$keshos_clang_bin/llvm-readelf"
+
+  # Chromium's generic Linux config emits a GNU target triple. These flags are
+  # appended later so the KeshOS musl target wins.
+  extra_cflags = "--target=x86_64-unknown-linux-musl"
+  extra_cxxflags = "--target=x86_64-unknown-linux-musl"
+  extra_ldflags = "--target=x86_64-unknown-linux-musl -static"
+
+  enable_linker_map = false
+
+  toolchain_args = {
+    current_cpu = "x64"
+    current_os = "linux"
+
+    # Compile-time userspace ABI bridge. Runtime graphics/input is OzoneKesh.
+    is_clang = true
+    use_lld = true
+    use_remoteexec = false
+
+    # Do not let Chromium's Debian target sysroot leak into KeshOS objects.
+    use_sysroot = false
+    sysroot = keshos_sysroot
+
+    # Chromium's stock Linux Rust target is GNU rather than musl.
+    enable_rust = false
+  }
+}
