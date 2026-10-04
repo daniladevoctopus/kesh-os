@@ -1,0 +1,3 @@
+[submodule "src/drivers/net/bearssl"]
+	path = src/drivers/net/bearssl
+	url = https://www.bearssl.org/git/BearSSL
