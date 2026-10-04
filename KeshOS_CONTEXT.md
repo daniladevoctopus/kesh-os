@@ -487,3 +487,24 @@ Why this change was chosen:
 Signals are deliberately NOT expanded in the same commit. KeshOS still has
 stub `rt_sigaction` / `rt_sigprocmask`, and proper signal semantics will be
 handled separately rather than pretending a broad signal implementation exists.
+
+### 2026-10-04 — OpenFyde/OzoneKesh bring-up sprint for first visible frame
+
+**User request:** Broad permission was granted to change KeshOS and the OpenFyde port as needed, with the immediate goal of making a first visible Chromium/OpenFyde-native result practical to compile and boot on the user's CachyOS development machine.
+
+**Port strategy:** The first executable milestone was reduced from the full upstream `ozone_demo` to a purpose-built `//keshos/ozone:kesh_smoke`. This keeps real Chromium `base`, Skia, Ozone and PlatformWindow code while deliberately excluding Blink, V8, Chrome, the GL demo renderer and Mojo initialization. The target draws a dark 900x560 test shell with three content cards, an orange accent and a moving green heartbeat strip.
+
+**KeshOS/OpenFyde changes made:**
+- added a pinned OpenFyde/depot_tools bootstrap using `gclient` and revision `493c46885be032faa677b4c166e06c7e85a0c396`;
+- added a KeshOS Chromium GN toolchain that uses the KeshOS musl sysroot and emits static non-PIE ET_EXEC output;
+- added ELF preflight validation for PT_INTERP/PT_DYNAMIC and W+X LOAD segments;
+- made the OzoneKesh framebuffer/input ABI self-contained instead of requiring Linux UAPI header packages;
+- added `kesh_smoke` and the one-command `ports/chromium_ui/tomorrow_build.sh` bring-up path;
+- restored missing `.gitmodules` metadata for the repository's pinned BearSSL gitlink so fresh clones can reproduce kernel builds;
+- fixed the duplicate `prctl(2)` dispatch exposed by CI;
+- expanded framebuffer mmap safety for high-resolution framebuffers;
+- added exclusive `/dev/fb0` scanout ownership. While a Ring 3 compositor owns fb0, the legacy kernel desktop continues input/network/services/process scheduling but stops swapping frames over userspace output. Ownership is released automatically when the owning process closes its last independently opened fb0 FD or exits.
+
+**Build evidence:** GitHub Actions successfully builds `build/kernel.elf` on the port branch after the `prctl` and BearSSL fixes, and validates the kernel ELF program headers. The Chromium/OpenFyde cross-build and on-device `kesh_smoke` runtime are still explicitly unverified because the ChatGPT container cannot perform the full OpenFyde checkout/build.
+
+**Tomorrow test:** switch to `port/openfyde-ozone-kesh`, run `./ports/chromium_ui/tomorrow_build.sh`, boot `build/keshos.iso`, open Terminal and run `run /boot/apps/kesh_smoke.elf`. Save the final build output and `serial.log` on failure. Full Ash remains after the sequence `kesh_smoke -> upstream ozone_demo -> Aura -> Views -> Ash`.
