@@ -16,6 +16,7 @@
 #include "gfx/gpu.h"
 #include "uwindow.h"
 #include "process.h"
+#include "drm_fb.h"
 #include "acpi.h"
 #include "drivers/system/fat32.h"
 #include "log.h"
@@ -2263,6 +2264,17 @@ void desktop_run(void)
 
         }
 
+        /* /dev/fb0 is an exclusive direct-scanout lease. When a Ring 3
+         * compositor such as OzoneKesh owns it, keep input, network, services
+         * and process scheduling alive but stop the legacy desktop from
+         * overwriting userspace pixels every frame. */
+        if (drm_fb_userspace_owned()) {
+            if (process_has_active()) process_step_active();
+            timer_wait_ticks(1);
+            next_frame_tick = timer_ticks();
+            continue;
+        }
+
         int has_user_shell = uwindow_has_desktop_surface();
 
         if (!has_user_shell) {
@@ -2278,6 +2290,13 @@ void desktop_run(void)
 
         if (process_has_active()) {
             process_step_active();
+        }
+
+        /* The process may have acquired /dev/fb0 during the step above. Do not
+         * swap one last legacy frame over its first Chromium frame. */
+        if (drm_fb_userspace_owned()) {
+            next_frame_tick = timer_ticks();
+            continue;
         }
 
         for (int __wz = 0; __wz < WIN_COUNT; __wz++) {
