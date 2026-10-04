@@ -588,11 +588,6 @@ int64_t linux_syscall_dispatcher(uint64_t num, uint64_t a1, uint64_t a2, uint64_
         }
 
         /* prctl(option, arg2, arg3, arg4, arg5) */
-        case 157: {
-            return 0;
-        }
-
-        /* arch_prctl(code, addr) */
         case LINUX_SYS_PRCTL: {
             switch ((int)a1) {
                 case LINUX_PR_SET_NAME: {
