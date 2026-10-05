@@ -1,0 +1,136 @@
+name: ChatGPT KeshOS Self-Hosted Build
+
+on:
+  push:
+    branches:
+      - chatgpt/keshos-openfyde-work
+    paths:
+      - "kernel/**"
+      - "src/**"
+      - "ports/**"
+      - "ports_bin/**"
+      - "toolchain/**"
+      - "build.sh"
+      - "generate_ninja.py"
+      - ".gitmodules"
+      - ".github/workflows/chatgpt-keshos-self-hosted-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chatgpt-keshos-self-hosted-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: OzoneKesh + KeshOS ISO
+    runs-on: [self-hosted, linux, x64, keshos-builder]
+    timeout-minutes: 240
+
+    env:
+      KESH_CHROMIUM_JOBS: "4"
+      OPENFYDE_WORKSPACE: ${{ github.workspace }}/../openfyde-kesh-work
+      KESH_ARTIFACT_ROOT: ${{ runner.tool_cache }}/../keshos-build-artifacts
+
+    steps:
+      - name: Checkout ChatGPT work branch
+        uses: actions/checkout@v4
+        with:
+          ref: chatgpt/keshos-openfyde-work
+          fetch-depth: 0
+          submodules: false
+          clean: true
+
+      - name: Runner diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "runner: $(hostname)"
+          echo "workspace: $GITHUB_WORKSPACE"
+          echo "openfyde cache: $OPENFYDE_WORKSPACE"
+          echo "commit: $(git rev-parse HEAD)"
+          echo "cpu: $(nproc) threads"
+          free -h || true
+          df -h "$GITHUB_WORKSPACE" || true
+          mkdir -p "$KESH_ARTIFACT_ROOT"
+
+      - name: Build OpenFyde OzoneKesh and KeshOS
+        id: full_build
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/bridge-logs
+          {
+            echo "=== KeshOS self-hosted build ==="
+            echo "started_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "kesh_commit=$(git rev-parse HEAD)"
+            echo "openfyde_workspace=$OPENFYDE_WORKSPACE"
+            echo "jobs=$KESH_CHROMIUM_JOBS"
+            echo
+            ./ports/chromium_ui/tomorrow_build.sh
+          } 2>&1 | tee build/bridge-logs/full-build.log
+
+      - name: Capture diagnostics
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          mkdir -p build/bridge-logs
+          {
+            echo "=== build result ==="
+            echo "workflow_run=$GITHUB_RUN_ID"
+            echo "workflow_attempt=$GITHUB_RUN_ATTEMPT"
+            echo "kesh_commit=$(git rev-parse HEAD 2>/dev/null)"
+            echo "finished_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo
+            echo "=== git status ==="
+            git status --short
+            echo
+            echo "=== generated outputs ==="
+            ls -lh build/keshos.iso ports_bin/kesh_smoke.elf 2>/dev/null || true
+            echo
+            echo "=== OpenFyde checkout ==="
+            if [[ -d "$OPENFYDE_WORKSPACE/src/.git" ]]; then
+              git -C "$OPENFYDE_WORKSPACE/src" rev-parse HEAD
+              git -C "$OPENFYDE_WORKSPACE/src" status --short | head -200
+            else
+              echo "OpenFyde checkout not present"
+            fi
+            echo
+            echo "=== disk ==="
+            df -h "$GITHUB_WORKSPACE" "$OPENFYDE_WORKSPACE" 2>/dev/null || true
+          } > build/bridge-logs/diagnostics.txt 2>&1
+
+      - name: Preserve successful local outputs
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEST="$KESH_ARTIFACT_ROOT/run-$GITHUB_RUN_ID-attempt-$GITHUB_RUN_ATTEMPT"
+          mkdir -p "$DEST"
+          cp -f build/keshos.iso "$DEST/keshos.iso"
+          cp -f ports_bin/kesh_smoke.elf "$DEST/kesh_smoke.elf"
+          cp -f build/bridge-logs/full-build.log "$DEST/full-build.log"
+          cp -f build/bridge-logs/diagnostics.txt "$DEST/diagnostics.txt"
+          printf '%s\n' "$DEST" | tee build/bridge-logs/local-artifact-path.txt
+          ls -lh "$DEST"
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keshos-build-logs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/bridge-logs/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload smoke binary
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kesh-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ports_bin/kesh_smoke.elf
+          if-no-files-found: error
+          retention-days: 7
