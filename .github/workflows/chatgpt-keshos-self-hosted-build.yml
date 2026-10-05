@@ -32,7 +32,7 @@ jobs:
     env:
       # Stage gate: advance only after the user explicitly approves the next step.
       # Valid values: gn, smoke, iso
-      KESH_APPROVED_STAGE: "gn"
+      KESH_APPROVED_STAGE: "smoke"
       KESH_CHROMIUM_JOBS: "4"
       OPENFYDE_WORKSPACE: ${{ github.workspace }}/../openfyde-kesh-work
       KESH_ARTIFACT_ROOT: ${{ github.workspace }}/../keshos-build-artifacts
