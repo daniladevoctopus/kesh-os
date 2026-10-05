@@ -26,10 +26,6 @@ fi
 rm -rf "$SRC/keshos"
 cp -a "$HERE/chromium_overlay/keshos" "$SRC/keshos"
 
-# Chromium's embedder override enables PDFium's Rust PNG codec globally.
-# OzoneKesh deliberately disables the Rust toolchain for the first C++/Skia
-# milestone, and GN evaluates PDFium assertions even though kesh_smoke does
-# not depend on PDFium. Keep the pinned checkout internally consistent.
 PDFIUM_OVERRIDE="$SRC/build_overrides/pdfium.gni"
 if [[ -f "$PDFIUM_OVERRIDE" ]]; then
   sed -i 's/^pdf_enable_rust_png_override = true$/pdf_enable_rust_png_override = false/' \
@@ -40,10 +36,6 @@ if ! grep -q '^pdf_enable_rust_png_override = false$' "$PDFIUM_OVERRIDE"; then
   exit 4
 fi
 
-# Chromium/OpenFyde's global GN graph still declares several Rust/test/browser
-# branches even though the first KeshOS milestone is a static C++/Skia Ozone
-# executable. Apply small pinned-source patches that make those branches obey
-# the build flags used by OzoneKesh. Keep this idempotent for incremental runs.
 for NO_RUST_PATCH in \
   "$HERE/patches/chromium-base-no-rust.patch" \
   "$HERE/patches/chromium-base-test-no-rust.patch" \
@@ -55,6 +47,7 @@ for NO_RUST_PATCH in \
   "$HERE/patches/chromium-mojom-prune-blink-variant.patch" \
   "$HERE/patches/chromium-google-apis-no-fyde-switches.patch" \
   "$HERE/patches/chromium-device-no-usb-tests.patch" \
+  "$HERE/patches/chromium-device-usb-gadget-no-blink.patch" \
   "$HERE/patches/chromium-lens-no-chrome.patch" \
   "$HERE/patches/chromium-skia-no-rust.patch" \
   "$HERE/patches/chromium-fontconfig-no-rust.patch" \

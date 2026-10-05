@@ -1,0 +1,19 @@
+diff --git a/services/device/BUILD.gn b/services/device/BUILD.gn
+index 318cba6bb1..3b2f83aa09 100644
+--- a/services/device/BUILD.gn
++++ b/services/device/BUILD.gn
+@@ -504,11 +504,14 @@ source_set("usb_test_gadget") {
+ 
+   deps = [
+     "//device/base",
+     "//net:test_support",
+-    "//services/device/usb",
+     "//tools/usb_gadget",
+   ]
++
++  if (use_blink) {
++    deps += [ "//services/device/usb" ]
++  }
+ }
+ 
+ source_set("utility") {
