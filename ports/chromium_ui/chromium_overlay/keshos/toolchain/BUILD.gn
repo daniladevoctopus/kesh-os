@@ -24,18 +24,18 @@ gcc_toolchain("kesh_x64") {
   readelf = "$keshos_clang_bin/llvm-readelf"
 
   # KeshOS currently exposes a musl/Linux-compatible userspace ABI, but the
-  # executable still runs on the KeshOS kernel.  --sysroot prevents host
+  # executable still runs on the KeshOS kernel. --sysroot prevents host
   # CachyOS headers/libraries from leaking into target objects.
   #
   # KeshOS' ELF loader intentionally accepts ET_EXEC only and rejects dynamic
-  # executables.  Chromium's generic Linux build defaults to PIE, so make the
+  # executables. Chromium's generic Linux build defaults to PIE, so make the
   # final target explicitly non-PIE and static.
   extra_cflags =
       "--target=x86_64-unknown-linux-musl --sysroot=\"$keshos_sysroot\" " +
       "-fno-pie"
   extra_cxxflags =
       "--target=x86_64-unknown-linux-musl --sysroot=\"$keshos_sysroot\" " +
-      "-fno-pie"
+      "-D_LIBCPP_PROVIDES_DEFAULT_RUNE_TABLE -fno-pie"
   extra_ldflags =
       "--target=x86_64-unknown-linux-musl --sysroot=\"$keshos_sysroot\" " +
       "-static -no-pie -fuse-ld=lld"
