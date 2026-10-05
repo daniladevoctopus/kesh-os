@@ -110,10 +110,12 @@ if [[ "$DO_GEN" == "--gen" ]]; then
     exit 5
   fi
 
-  # Do not start from Chromium's giant //: root. It pulls browser, Blink, Rust,
-  # tests, ChromeOS and FydeOS-only branches that are unrelated to OzoneKesh.
-  # Root the graph at the exact first milestone and generate only its transitive
-  # dependency closure.
+  # Chromium's normal root emits every target defined by every BUILD file that
+  # gets evaluated. --root-target chooses the starting BUILD file, while
+  # --root-pattern restricts the emitted graph to the smoke target and its
+  # transitive dependency closure. This avoids unrelated browser/Ash/test graph
+  # branches during the first OzoneKesh milestone.
   (cd "$CHROMIUM" && "$GN" gen out/KeshOS \
-    --root-target=//keshos/ozone:kesh_smoke)
+    --root-target=//keshos/ozone:kesh_smoke \
+    --root-pattern=//keshos/ozone:kesh_smoke)
 fi
