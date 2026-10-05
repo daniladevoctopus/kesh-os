@@ -137,6 +137,34 @@ else:
     print("Blink renderer/public dependency lists already gated")
 PY
 
+# Content Shell has no valid role in a build that explicitly disables Blink.
+# Its BUILD file may still be loaded by unrelated Chromium test/tooling edges;
+# keep declarations/args visible, but do not evaluate shell targets themselves.
+python3 - "$SRC/content/shell/BUILD.gn" <<'PY'
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+text = path.read_text()
+marker = "# KeshOS no-Blink Content Shell guard"
+if marker not in text:
+    anchor = 'config("content_shell_lib_warnings") {'
+    pos = text.find(anchor)
+    if pos < 0:
+        raise SystemExit("content_shell_lib_warnings anchor not found")
+    prefix = text[:pos]
+    body = text[pos:].rstrip() + "\n"
+    guarded = (
+        marker + "\n"
+        "if (use_blink) {\n" +
+        "\n".join("  " + line if line else "" for line in body.splitlines()) +
+        "\n}\n"
+    )
+    path.write_text(prefix + guarded)
+    print("Guarded Content Shell targets behind use_blink")
+else:
+    print("Content Shell targets already guarded")
+PY
+
 echo "OzoneKesh overlay installed at: $SRC/keshos"
 echo
 echo "GN bootstrap args:"
