@@ -199,3 +199,35 @@ EOF
 else
   echo "base::JSONReader already uses the no-Rust C++ parser"
 fi
+
+# logging.cc unconditionally includes/calls the generated Rust logging bridge in
+# this Chromium revision even when the BUILD dependency has been removed. The
+# native C++ logger already handles KeshOS' first-stage logging, so remove only
+# that bridge from the no-Rust checkout.
+python3 - "$SRC/base/logging.cc" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+include = '#include "base/logging/rust_logger.rs.h"\n'
+call = '''  // Connects Rust logging with the //base logging functionality.
+  internal::init_rust_log_crate();
+'''
+marker = '''  // KeshOS no-Rust build: Rust logging bridge intentionally disabled.
+'''
+changed = False
+if include in text:
+    text = text.replace(include, '', 1)
+    changed = True
+if call in text:
+    text = text.replace(call, marker, 1)
+    changed = True
+if changed:
+    path.write_text(text)
+    print("Removed base Rust logger bridge for no-Rust KeshOS")
+elif marker in text:
+    print("Base Rust logger bridge already disabled for KeshOS")
+else:
+    raise SystemExit("base logging Rust bridge pattern not found")
+PY
