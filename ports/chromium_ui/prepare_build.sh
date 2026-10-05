@@ -53,9 +53,6 @@ cat > "$CHROMIUM/out/KeshOS/args.gn" <<EOF
 target_os = "linux"
 target_cpu = "x64"
 
-is_keshos_build = true
-root_extra_deps = [ "//keshos/ozone:kesh_smoke" ]
-
 custom_toolchain = "//keshos/toolchain:kesh_x64"
 keshos_sysroot = "$SYSROOT_LINK"
 keshos_clang_bin = "$CLANG_BIN"
@@ -90,7 +87,7 @@ symbol_level = 0
 treat_warnings_as_errors = false
 use_custom_libcxx = true
 
-# Chromium's normal Linux Rust target is GNU. Ozone demo does not need Rust and
+# Chromium's normal Linux Rust target is GNU. Ozone smoke does not need Rust and
 # keeping it disabled removes another cross-toolchain variable for bring-up.
 enable_rust = false
 enable_rust_cxx = false
@@ -99,7 +96,6 @@ EOF
 echo "Prepared: $CHROMIUM/out/KeshOS/args.gn"
 echo "KeshOS sysroot: $SYSROOT_LINK -> $SYSROOT_REAL"
 echo "Clang tools: $CLANG_BIN"
-
 echo "OpenFyde source HEAD: $(git -C "$CHROMIUM" rev-parse HEAD 2>/dev/null || echo unknown)"
 
 if [[ "$DO_GEN" == "--gen" ]]; then
@@ -114,5 +110,10 @@ if [[ "$DO_GEN" == "--gen" ]]; then
     exit 5
   fi
 
-  (cd "$CHROMIUM" && "$GN" gen out/KeshOS)
+  # Do not start from Chromium's giant //: root. It pulls browser, Blink, Rust,
+  # tests, ChromeOS and FydeOS-only branches that are unrelated to OzoneKesh.
+  # Root the graph at the exact first milestone and generate only its transitive
+  # dependency closure.
+  (cd "$CHROMIUM" && "$GN" gen out/KeshOS \
+    --root-target=//keshos/ozone:kesh_smoke)
 fi
