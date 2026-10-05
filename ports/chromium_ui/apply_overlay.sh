@@ -137,6 +137,54 @@ else:
     print("Blink renderer/public dependency lists already gated")
 PY
 
+# components/input shares production and test targets in one BUILD file. The
+# no-Blink OzoneKesh path needs production input, but must not traverse browser
+# tests or ui/events/blink just because GN evaluates every declaration.
+python3 - "$SRC/components/input/BUILD.gn" <<'PY'
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+text = path.read_text()
+
+def gate_deps(text, marker):
+    start = text.find(marker)
+    if start < 0:
+        raise SystemExit(f"target not found: {marker}")
+    end = text.find('\n}\n', start)
+    if end < 0:
+        end = len(text)
+    block = text[start:end + 3]
+    signature = '  deps = []\n  if (use_blink) {'
+    if signature in block:
+        return text, False
+    list_start = block.find('  deps = [')
+    if list_start < 0:
+        raise SystemExit(f"deps list not found in {marker}")
+    list_end = block.find('\n  ]', list_start)
+    if list_end < 0:
+        raise SystemExit(f"deps end not found in {marker}")
+    list_end += len('\n  ]')
+    original = block[list_start:list_end]
+    body = '\n'.join('  ' + line for line in original.splitlines())
+    replacement = '  deps = []\n  if (use_blink) {\n' + body + '\n  }'
+    block = block[:list_start] + replacement + block[list_end:]
+    return text[:start] + block + text[end + 3:], True
+
+changed = False
+for marker in [
+    'source_set("unit_tests")',
+    'source_set("test_support")',
+    'source_set("browser_tests")',
+]:
+    text, did = gate_deps(text, marker)
+    changed = changed or did
+if changed:
+    path.write_text(text)
+    print("Gated components/input test dependencies behind use_blink")
+else:
+    print("components/input test dependencies already gated")
+PY
+
 # Content Shell has no valid role in a build that explicitly disables Blink.
 # Its BUILD file may still be loaded by unrelated Chromium test/tooling edges;
 # keep declarations/args visible, but do not evaluate shell targets themselves.
