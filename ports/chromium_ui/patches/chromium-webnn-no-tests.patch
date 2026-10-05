@@ -1,0 +1,30 @@
+diff --git a/services/webnn/public/mojom/BUILD.gn b/services/webnn/public/mojom/BUILD.gn
+index 1888efba8d..ac88c6dcac 100644
+--- a/services/webnn/public/mojom/BUILD.gn
++++ b/services/webnn/public/mojom/BUILD.gn
+@@ -127,6 +127,10 @@ mojom_component("mojom") {
+   blink_cpp_typemaps = shared_webnn_typemaps
+ }
+ 
++if (!use_blink) {
++group("webnn_mojom_traits") {
++}
++} else {
+ component("webnn_mojom_traits") {
+   sources = [
+     "operand_descriptor_mojom_traits.cc",
+@@ -144,7 +148,9 @@ component("webnn_mojom_traits") {
+ 
+   defines = [ "IS_WEBNN_MOJOM_TRAITS_IMPL" ]
+ }
++}
+ 
++if (use_blink) {
+ source_set("tests") {
+   testonly = true
+ 
+@@ -162,3 +168,4 @@ source_set("tests") {
+     "//testing/gtest",
+   ]
+ }
++}

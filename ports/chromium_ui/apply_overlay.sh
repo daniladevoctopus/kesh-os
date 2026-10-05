@@ -48,6 +48,10 @@ fi
 for NO_RUST_PATCH in \
   "$HERE/patches/chromium-base-no-rust.patch" \
   "$HERE/patches/chromium-base-test-no-rust.patch" \
+  "$HERE/patches/chromium-content-browser-stub.patch" \
+  "$HERE/patches/chromium-webnn-no-tests.patch" \
+  "$HERE/patches/chromium-viz-service-minimal.patch" \
+  "$HERE/patches/chromium-mojo-no-rust.patch" \
   "$HERE/patches/chromium-skia-no-rust.patch" \
   "$HERE/patches/chromium-fontconfig-no-rust.patch" \
   "$HERE/patches/chromium-ui-base-minimal.patch" \

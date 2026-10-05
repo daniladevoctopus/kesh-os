@@ -1,0 +1,20 @@
+diff --git a/content/public/browser/BUILD.gn b/content/public/browser/BUILD.gn
+index 2a0f8af4b7..a9c28e6191 100644
+--- a/content/public/browser/BUILD.gn
++++ b/content/public/browser/BUILD.gn
+@@ -14,6 +14,10 @@ if (is_android) {
+   import("//build/config/android/rules.gni")
+ }
+ 
++if (!use_blink) {
++  group("browser") {
++  }
++} else {
+ # See //content/BUILD.gn for how this works.
+ group("browser") {
+   if (is_component_build) {
+@@ -771,3 +775,4 @@ if (is_android) {
+ proto_library("proto") {
+   sources = [ "google_streaming_api.proto" ]
+ }
++}

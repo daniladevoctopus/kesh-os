@@ -15,7 +15,10 @@ use_sysroot = false
 use_blink = false
 use_glib = false
 use_dbus = false
+use_gtk = false
+use_qt = false
 media_use_symphonia = false
+libyuv_disable_jpeg = true
 
 use_ozone = true
 ozone_auto_platforms = false

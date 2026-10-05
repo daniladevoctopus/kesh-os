@@ -1,0 +1,31 @@
+diff --git a/components/viz/service/BUILD.gn b/components/viz/service/BUILD.gn
+index da33fa857f..32f0e0a3f9 100644
+--- a/components/viz/service/BUILD.gn
++++ b/components/viz/service/BUILD.gn
+@@ -315,11 +315,8 @@ viz_component("service") {
+     "//services/metrics/public/mojom",
+     "//services/tracing/public/cpp",
+     "//services/viz/privileged/mojom",
+-    "//services/webnn:webnn_service",
+-    "//services/webnn/public/mojom",
+     "//skia",
+     "//skia:skcms",
+-    "//third_party/blink/public/common",
+     "//third_party/libyuv",
+     "//ui/base:ozone_buildflags",
+     "//ui/display/types",
+@@ -327,6 +324,14 @@ viz_component("service") {
+     "//ui/gfx/animation/keyframe",
+   ]
+ 
++  if (use_blink) {
++    deps += [
++      "//services/webnn:webnn_service",
++      "//services/webnn/public/mojom",
++      "//third_party/blink/public/common",
++    ]
++  }
++
+   public_deps = [
+     ":viz_debugger",
+     ":viz_service_export",

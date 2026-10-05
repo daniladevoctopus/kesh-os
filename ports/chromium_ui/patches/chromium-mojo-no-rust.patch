@@ -1,0 +1,40 @@
+diff --git a/mojo/public/BUILD.gn b/mojo/public/BUILD.gn
+index 58f7ab43a2..1129d71fd2 100644
+--- a/mojo/public/BUILD.gn
++++ b/mojo/public/BUILD.gn
+@@ -2,6 +2,8 @@
+ # Use of this source code is governed by a BSD-style license that can be
+ # found in the LICENSE file.
+ 
++import("//build/config/rust.gni")
++
+ group("public") {
+   # Meta-target, don't link into production code.
+   testonly = true
+@@ -10,9 +12,12 @@ group("public") {
+     "cpp/bindings",
+     "cpp/test:test_mojom",
+     "interfaces/bindings/tests:test_interfaces",
+-    "rust:all",
+   ]
+ 
++  if (enable_rust) {
++    deps += [ "rust:all" ]
++  }
++
+   if (is_android) {
+     deps += [
+       "java:bindings_java",
+@@ -25,8 +30,11 @@ group("sdk") {
+   deps = [
+     "c/system",
+     "cpp/bindings",
+-    "rust:mojo_rust_system_api",
+   ]
++
++  if (enable_rust) {
++    deps += [ "rust:mojo_rust_system_api" ]
++  }
+ }
+ 
+ group("fuzzers") {
