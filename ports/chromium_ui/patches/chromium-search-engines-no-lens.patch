@@ -1,0 +1,41 @@
+diff --git a/components/search_engines/BUILD.gn b/components/search_engines/BUILD.gn
+index ded6565c2f..1a5f49a7e7 100644
+--- a/components/search_engines/BUILD.gn
++++ b/components/search_engines/BUILD.gn
+@@ -2,6 +2,7 @@
+ # Use of this source code is governed by a BSD-style license that can be
+ # found in the LICENSE file.
+ 
+ import("//build/config/chrome_build.gni")
++import("//build/config/features.gni")
+ import("//tools/json_to_struct/json_to_struct.gni")
+ if (is_android) {
+   import("//build/config/android/config.gni")
+@@ -80,9 +81,6 @@ static_library("search_engines") {
+     "//components/crash/core/common:crash_key",
+     "//components/database_utils",
+     "//components/infobars/core",
+-    "//components/lens:features",
+-    "//components/lens:mime_type",
+-    "//components/lens/proto/server:proto",
+     "//components/metrics",
+     "//components/omnibox/common",
+     "//components/policy:generated",
+@@ -113,6 +111,14 @@ static_library("search_engines") {
+     "//url",
+   ]
+ 
++  # Lens is browser/Blink functionality. OzoneKesh's first bring-up is a
++  # Chromium UI-only build with use_blink=false, so do not make parsing this
++  # otherwise unrelated component pull //chrome back into the GN graph.
++  if (use_blink) {
++    deps += [
++      "//components/lens:features",
++      "//components/lens:mime_type",
++      "//components/lens/proto/server:proto",
++    ]
++  }
++
+   if (!is_fuchsia) {
+     deps += [ "//components/variations/service" ]
+   }

@@ -55,6 +55,7 @@ for NO_RUST_PATCH in \
   "$HERE/patches/chromium-mojom-prune-blink-variant.patch" \
   "$HERE/patches/chromium-google-apis-no-fyde-switches.patch" \
   "$HERE/patches/chromium-device-no-usb-tests.patch" \
+  "$HERE/patches/chromium-search-engines-no-lens.patch" \
   "$HERE/patches/chromium-skia-no-rust.patch" \
   "$HERE/patches/chromium-fontconfig-no-rust.patch" \
   "$HERE/patches/chromium-ui-base-minimal.patch" \
