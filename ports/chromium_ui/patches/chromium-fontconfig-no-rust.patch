@@ -1,0 +1,24 @@
+diff --git a/third_party/fontconfig/BUILD.gn b/third_party/fontconfig/BUILD.gn
+index c0f6ac7e4b..7e95a4262d 100644
+--- a/third_party/fontconfig/BUILD.gn
++++ b/third_party/fontconfig/BUILD.gn
+@@ -7,7 +7,7 @@ import("//third_party/fontconfig/fontconfig.gni")
+ 
+ assert(is_linux || is_chromeos)
+ 
+-if (use_bundled_fontconfig) {
++if (use_bundled_fontconfig && enable_rust) {
+   rust_bindgen("fontconfig_h_bindgen") {
+     header = "include/fontconfig/fontconfig.h"
+     bindgen_flags = [
+@@ -161,7 +161,9 @@ if (use_bundled_fontconfig) {
+   }
+ } else {
+   config("fontconfig_config") {
+-    libs = [ "fontconfig" ]
++    if (enable_rust) {
++      libs = [ "fontconfig" ]
++    }
+   }
+ 
+   group("fontconfig") {

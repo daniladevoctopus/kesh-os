@@ -1,0 +1,357 @@
+diff --git a/ui/ozone/BUILD.gn b/ui/ozone/BUILD.gn
+index abb2ee9d82..6fdbe17ee0 100644
+--- a/ui/ozone/BUILD.gn
++++ b/ui/ozone/BUILD.gn
+@@ -33,6 +33,15 @@ ozone_platform_ui_test_support_deps =
+ # Extra dependencies to pull into interactive_ui_tests for built platforms.
+ ozone_platform_interactive_ui_tests_sources =
+     ozone_external_interactive_ui_tests_deps
++
++if (!enable_rust) {
++  not_needed([
++    "ozone_platform_test_deps",
++    "ozone_platform_integration_test_deps",
++    "ozone_platform_ui_test_support_deps",
++    "ozone_platform_interactive_ui_tests_sources",
++  ])
++}
+ 
+ if (ozone_platform_headless) {
+   ozone_platforms += [ "headless" ]
+@@ -76,7 +76,9 @@ platform_list_h_file = "$target_gen_dir/platform_list.h"
+ platform_list_txt_file = "$target_gen_dir/platform_list.txt"
+ constructor_list_cc_file = "$target_gen_dir/constructor_list.cc"
+ 
+-test_constructor_list_cc_file = "$target_gen_dir/test_constructor_list.cc"
++if (enable_rust) {
++  test_constructor_list_cc_file = "$target_gen_dir/test_constructor_list.cc"
++}
+ 
+ component("ozone_base") {
+   sources = [
+@@ -297,77 +297,79 @@ source_set("drm_modifiers_filter") {
+   visibility += [ "//gpu/vulkan" ]
+ }
+ 
+-source_set("test_support_internal") {
+-  testonly = true
++if (enable_rust) {
++  source_set("test_support_internal") {
++    testonly = true
+ 
+-  sources = [
+-    "test/mock_platform_window_delegate.cc",
+-    "test/mock_platform_window_delegate.h",
+-  ]
++    sources = [
++      "test/mock_platform_window_delegate.cc",
++      "test/mock_platform_window_delegate.h",
++    ]
+ 
+-  configs += [ "//build/config:precompiled_headers" ]
++    configs += [ "//build/config:precompiled_headers" ]
+ 
+-  deps = [
+-    "//mojo/public/cpp/bindings",
+-    "//testing/gmock",
+-    "//testing/gtest",
+-    "//ui/base",
+-    "//ui/gfx:test_support",
+-    "//ui/gfx/geometry",
+-    "//ui/platform_window",
+-  ]
++    deps = [
++      "//mojo/public/cpp/bindings",
++      "//testing/gmock",
++      "//testing/gtest",
++      "//ui/base",
++      "//ui/gfx:test_support",
++      "//ui/gfx/geometry",
++      "//ui/platform_window",
++    ]
+ 
+-  public_deps = [ "//base/test:test_support" ]
+-}
++    public_deps = [ "//base/test:test_support" ]
++  }
+ 
+-static_library("ui_test_support") {
+-  visibility = []
+-  visibility = [ "//ui/views:test_support" ]
++  static_library("ui_test_support") {
++    visibility = []
++    visibility = [ "//ui/views:test_support" ]
+ 
+-  testonly = true
++    testonly = true
+ 
+-  sources = [
+-    "common/test/stub_ozone_ui_controls_test_helper.cc",
+-    "common/test/stub_ozone_ui_controls_test_helper.h",
+-    "public/ozone_ui_controls_test_helper.cc",
+-    test_constructor_list_cc_file,
+-  ]
++    sources = [
++      "common/test/stub_ozone_ui_controls_test_helper.cc",
++      "common/test/stub_ozone_ui_controls_test_helper.h",
++      "public/ozone_ui_controls_test_helper.cc",
++      test_constructor_list_cc_file,
++    ]
+ 
+-  public = [ "public/ozone_ui_controls_test_helper.h" ]
++    public = [ "public/ozone_ui_controls_test_helper.h" ]
+ 
+-  deps = [
+-    ":generate_test_support_constructor_list",
+-    ":ozone",
+-    "//ui/base:test_support",
+-    "//ui/events:events_base",
+-  ]
++    deps = [
++      ":generate_test_support_constructor_list",
++      ":ozone",
++      "//ui/base:test_support",
++      "//ui/events:events_base",
++    ]
+ 
+-  deps += ozone_platform_ui_test_support_deps
++    deps += ozone_platform_ui_test_support_deps
+ 
+-  allow_circular_includes_from = ozone_platform_ui_test_support_deps
+-}
++    allow_circular_includes_from = ozone_platform_ui_test_support_deps
++  }
+ 
+-source_set("ozone_interactive_ui_tests") {
+-  visibility = []
+-  visibility = [ "//chrome/test:interactive_ui_tests${exec_target_suffix}" ]
++  source_set("ozone_interactive_ui_tests") {
++    visibility = []
++    visibility = [ "//chrome/test:interactive_ui_tests${exec_target_suffix}" ]
+ 
+-  testonly = true
++    testonly = true
+ 
+-  deps = ozone_platform_interactive_ui_tests_sources
+-}
++    deps = ozone_platform_interactive_ui_tests_sources
++  }
+ 
+-static_library("test_support") {
+-  visibility = []
+-  visibility = [
+-    ":*",
+-    "platform/flatland:flatland_unittests",
+-    "platform/wayland:test_support",
+-    "platform/wayland:wayland_unittests",
+-    "platform/x11:x11_unittests",
+-  ]
++  static_library("test_support") {
++    visibility = []
++    visibility = [
++      ":*",
++      "platform/flatland:flatland_unittests",
++      "platform/wayland:test_support",
++      "platform/wayland:wayland_unittests",
++      "platform/x11:x11_unittests",
++    ]
+ 
+-  testonly = true
+-  public_deps = [ ":test_support_internal" ]
++    testonly = true
++    public_deps = [ ":test_support_internal" ]
++  }
+ }
+ 
+ action("generate_ozone_platform_list") {
+@@ -389,18 +391,20 @@ action("generate_ozone_platform_list") {
+   visibility += [ "//media:*" ]
+ }
+ 
+-source_set("ozone_gpu_test_support") {
+-  visibility = []
+-  visibility = [ "//components/viz/demo:viz_demo" ]
++if (enable_rust) {
++  source_set("ozone_gpu_test_support") {
++    visibility = []
++    visibility = [ "//components/viz/demo:viz_demo" ]
+ 
+-  sources = [ "public/ozone_gpu_test_helper.cc" ]
++    sources = [ "public/ozone_gpu_test_helper.cc" ]
+ 
+-  public = [ "public/ozone_gpu_test_helper.h" ]
++    public = [ "public/ozone_gpu_test_helper.h" ]
+ 
+-  public_deps = [
+-    ":platform",
+-    "//base",
+-  ]
++    public_deps = [
++      ":platform",
++      "//base",
++    ]
++  }
+ }
+ 
+ action("generate_constructor_list") {
+@@ -423,92 +427,95 @@ action("generate_constructor_list") {
+   deps = [ ":generate_ozone_platform_list" ]
+ }
+ 
+-action("generate_test_support_constructor_list") {
+-  script = "generate_constructor_list.py"
+-
+-  inputs = [ platform_list_txt_file ]
+-  outputs = [ test_constructor_list_cc_file ]
+-
+-  args = [
+-    "--platform_list=" + rebase_path(platform_list_txt_file, root_build_dir),
+-    "--output_cc=" + rebase_path(test_constructor_list_cc_file, root_build_dir),
+-    "--namespace=ui",
+-    "--typename=OzoneUIControlsTestHelper",
+-    "--include=\"ui/ozone/public/ozone_ui_controls_test_helper.h\"",
+-    "--include=\"ui/ozone/public/ozone_platform.h\"",
+-  ]
+-
+-  deps = [ ":generate_ozone_platform_list" ]
+-}
+-
+-test("ozone_unittests") {
+-  deps = [
+-    ":native_pixmap_usage",
+-    ":test_support",
+-    "//mojo/core/test:run_all_unittests",
+-    "//ui/ozone/common:unittests",
+-  ]
+-
+-  # Add tests of platform internals.
+-  deps += ozone_platform_test_deps
+-
+-  # Platform tests link ozone statically. Make sure we're not getting a
+-  # 2nd copy of any code via the component.
+-  assert_no_deps = [ "//ui/ozone" ]
+-
+-  data_deps = [ "//testing/buildbot/filters:ozone_unittests_filters" ]
++if (enable_rust) {
++  action("generate_test_support_constructor_list") {
++    script = "generate_constructor_list.py"
++
++    inputs = [ platform_list_txt_file ]
++    outputs = [ test_constructor_list_cc_file ]
++
++    args = [
++      "--platform_list=" + rebase_path(platform_list_txt_file, root_build_dir),
++      "--output_cc=" +
++          rebase_path(test_constructor_list_cc_file, root_build_dir),
++      "--namespace=ui",
++      "--typename=OzoneUIControlsTestHelper",
++      "--include=\"ui/ozone/public/ozone_ui_controls_test_helper.h\"",
++      "--include=\"ui/ozone/public/ozone_platform.h\"",
++    ]
+ 
+-  if (is_fuchsia) {
+-    additional_manifest_fragments =
+-        [ "//build/config/fuchsia/test/test_ui_stack.shard.test-cml" ]
++    deps = [ ":generate_ozone_platform_list" ]
+   }
+-}
+-
+-# X11 backend has its own test suite only built when we are using the x11
+-# backend.
+-if (ozone_platform_x11) {
+-  test("ozone_x11_unittests") {
+-    use_xvfb = true
+ 
++  test("ozone_unittests") {
+     deps = [
++      ":native_pixmap_usage",
+       ":test_support",
+       "//mojo/core/test:run_all_unittests",
++      "//ui/ozone/common:unittests",
+     ]
+ 
+-    deps += [ "platform/x11:x11_unittests" ]
++    # Add tests of platform internals.
++    deps += ozone_platform_test_deps
+ 
+     # Platform tests link ozone statically. Make sure we're not getting a
+     # 2nd copy of any code via the component.
+     assert_no_deps = [ "//ui/ozone" ]
++
++    data_deps = [ "//testing/buildbot/filters:ozone_unittests_filters" ]
++
++    if (is_fuchsia) {
++      additional_manifest_fragments =
++          [ "//build/config/fuchsia/test/test_ui_stack.shard.test-cml" ]
++    }
+   }
+-}
+ 
+-test("ozone_integration_tests") {
+-  testonly = true
++  # X11 backend has its own test suite only built when we are using the x11
++  # backend.
++  if (ozone_platform_x11) {
++    test("ozone_x11_unittests") {
++      use_xvfb = true
+ 
+-  visibility += [ "*" ]
++      deps = [
++        ":test_support",
++        "//mojo/core/test:run_all_unittests",
++      ]
+ 
+-  sources = [ "test/ozone_integration_tests_main.cc" ]
++      deps += [ "platform/x11:x11_unittests" ]
+ 
+-  deps = [
+-    "//base/test:test_support",
+-    "//mojo/core/embedder",
+-  ]
++      # Platform tests link ozone statically. Make sure we're not getting a
++      # 2nd copy of any code via the component.
++      assert_no_deps = [ "//ui/ozone" ]
++    }
++  }
+ 
+-  deps += ozone_platform_integration_test_deps
+-}
++  test("ozone_integration_tests") {
++    testonly = true
+ 
+-group("unittests") {
+-  testonly = true
++    visibility += [ "*" ]
+ 
+-  visibility += [ "*" ]
++    sources = [ "test/ozone_integration_tests_main.cc" ]
+ 
+-  deps = [
+-    ":ozone_unittests",
+-    "//ui/ozone/gl:ozone_gl_unittests",
+-  ]
++    deps = [
++      "//base/test:test_support",
++      "//mojo/core/embedder",
++    ]
+ 
+-  if (ozone_platform_x11) {
+-    deps += [ "//ui/ozone:ozone_x11_unittests" ]
++    deps += ozone_platform_integration_test_deps
++  }
++
++  group("unittests") {
++    testonly = true
++
++    visibility += [ "*" ]
++
++    deps = [
++      ":ozone_unittests",
++      "//ui/ozone/gl:ozone_gl_unittests",
++    ]
++
++    if (ozone_platform_x11) {
++      deps += [ "//ui/ozone:ozone_x11_unittests" ]
++    }
+   }
+ }

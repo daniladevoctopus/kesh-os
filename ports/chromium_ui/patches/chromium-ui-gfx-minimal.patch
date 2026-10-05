@@ -1,0 +1,50 @@
+diff --git a/ui/gfx/BUILD.gn b/ui/gfx/BUILD.gn
+index f23cf9d02a..24a0edde23 100644
+--- a/ui/gfx/BUILD.gn
++++ b/ui/gfx/BUILD.gn
+@@ -224,11 +224,11 @@ component("gfx") {
+     ]
+   }
+ 
+-  if (is_linux) {
++  if (is_linux && enable_rust) {
+     deps += [ "//ui/linux:linux_ui" ]
+   }
+ 
+-  if (is_linux || is_chromeos) {
++  if ((is_linux || is_chromeos) && enable_rust) {
+     sources += [
+       "font_fallback_linux.cc",
+       "font_fallback_linux.h",
+@@ -617,7 +617,7 @@ source_set("memory_buffer_sources") {
+     "//ui/gfx/geometry",
+   ]
+ 
+-  if (is_linux || is_chromeos) {
++  if ((is_linux || is_chromeos) && enable_rust) {
+     sources += [
+       "linux/client_native_pixmap_dmabuf.cc",
+       "linux/client_native_pixmap_dmabuf.h",
+@@ -631,7 +631,7 @@ source_set("memory_buffer_sources") {
+     deps += [ "//build/config/linux/libdrm" ]
+   }
+ 
+-  if (is_linux || is_chromeos || is_android) {
++  if ((is_linux || is_chromeos || is_android) && enable_rust) {
+     deps += [ "//third_party/libsync" ]
+   }
+ 
+@@ -956,11 +956,11 @@ test("gfx_unittests") {
+     ]
+   }
+ 
+-  if (is_linux) {
++  if (is_linux && enable_rust) {
+     deps += [ "//ui/linux:test_support" ]
+   }
+ 
+-  if (is_linux || is_chromeos) {
++  if ((is_linux || is_chromeos) && enable_rust) {
+     sources += [
+       "linux/fontconfig_util_unittest.cc",
+       "linux/native_pixmap_dmabuf_unittest.cc",

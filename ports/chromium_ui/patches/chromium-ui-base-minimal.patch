@@ -1,0 +1,27 @@
+diff --git a/ui/base/BUILD.gn b/ui/base/BUILD.gn
+index e4d42a73ef..f0e03bdc3c 100644
+--- a/ui/base/BUILD.gn
++++ b/ui/base/BUILD.gn
+@@ -500,9 +500,12 @@ component("base") {
+     "//ui/display",
+     "//ui/display/util:gpu_info_util",
+     "//ui/strings",
+-    "//ui/webui/resources:resources_grit",
+     "//url",
+   ]
++
++  if (use_blink) {
++    deps += [ "//ui/webui/resources:resources_grit" ]
++  }
+ 
+   if (is_debug || dcheck_always_on) {
+     deps += [ "//third_party/re2" ]
+@@ -562,7 +562,7 @@ component("base") {
+     sources += [ "resource/resource_bundle_auralinux.cc" ]
+   }
+ 
+-  if (is_linux || is_chromeos) {
++  if ((is_linux || is_chromeos) && enable_rust) {
+     deps += [ "//third_party/fontconfig" ]
+   }
+ 

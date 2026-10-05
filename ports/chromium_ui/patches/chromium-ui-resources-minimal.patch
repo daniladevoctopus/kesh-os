@@ -1,0 +1,31 @@
+diff --git a/ui/resources/BUILD.gn b/ui/resources/BUILD.gn
+index 2b818b0c04..2d9773e2fb 100644
+--- a/ui/resources/BUILD.gn
++++ b/ui/resources/BUILD.gn
+@@ -127,20 +127,22 @@ repack("repack_ui_test_pak_100_percent") {
+     "$root_gen_dir/ui/strings/app_locale_settings_en-US.pak",
+     "$root_gen_dir/ui/strings/ax_strings_en-US.pak",
+     "$root_gen_dir/ui/strings/ui_strings_en-US.pak",
+-    "$root_gen_dir/ui/webui/resources/webui_resources.pak",
+   ]
+ 
+   output = "$root_out_dir/ui_test.pak"
+ 
+   deps = [
+     "//mojo/public/js:resources",
+     "//ui/resources",
+     "//ui/strings",
+-    "//ui/webui/resources:resources_grit",
+   ]
+ 
+-  if (!is_ios) {
+-    deps += [ "//third_party/blink/public:resources_grit" ]
++  if (use_blink) {
++    sources += [ "$root_gen_dir/ui/webui/resources/webui_resources.pak" ]
++    deps += [ "//ui/webui/resources:resources_grit" ]
++    if (!is_ios) {
++      deps += [ "//third_party/blink/public:resources_grit" ]
++    }
+   }
+ 
+   if (!is_mac) {

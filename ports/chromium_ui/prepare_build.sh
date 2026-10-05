@@ -51,10 +51,17 @@ cat > "$CHROMIUM/out/KeshOS/args.gn" <<EOF
 target_os = "linux"
 target_cpu = "x64"
 
+is_keshos_build = true
+root_extra_deps = [ "//keshos/ozone:kesh_smoke" ]
+
 custom_toolchain = "//keshos/toolchain:kesh_x64"
 keshos_sysroot = "$SYSROOT_LINK"
 keshos_clang_bin = "$CLANG_BIN"
 use_sysroot = false
+use_blink = false
+use_glib = false
+use_dbus = false
+media_use_symphonia = false
 
 use_ozone = true
 ozone_auto_platforms = false
@@ -72,6 +79,8 @@ ozone_platform_flatland = false
 enable_vulkan = false
 is_component_build = false
 is_debug = false
+is_official_build = true
+chrome_pgo_phase = 0
 symbol_level = 0
 treat_warnings_as_errors = false
 use_custom_libcxx = true

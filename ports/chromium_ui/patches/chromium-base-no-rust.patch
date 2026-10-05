@@ -1,0 +1,82 @@
+diff --git a/BUILD.gn b/BUILD.gn
+index 8af8454ae..2b6253501 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -67,5 +67,9 @@ declare_args() {
+   # in files.
+   root_extra_deps = []
++
++  # Generate only the OzoneKesh dependency graph for the static musl port.
++  # Full Chromium test targets assume the stock Linux Rust toolchain.
++  is_keshos_build = false
+ }
+ 
+ if (is_official_build) {
+@@ -83,7 +87,9 @@ if (is_official_build) {
+ group("gn_all") {
+   testonly = true
+ 
+-  if (is_cronet_build) {
++  if (is_keshos_build) {
++    deps = root_extra_deps
++  } else if (is_cronet_build) {
+     if (is_android) {
+       deps = [ "//components/cronet/android:cronet_package_android" ]
+     } else {
+@@ -832,6 +838,10 @@ group("gn_all") {
+     deps += [ "//clusterfuzz-data:all" ]
+   }
+ }
++
++# OzoneKesh only needs gn_all and its explicit root_extra_deps. Avoid loading
++# Chromium's unrelated test/tooling graph, which assumes the Linux Rust SDK.
++if (!is_keshos_build) {
+ 
+ # All Rust targets. This is provided for convenience while developing Rust to
+ # e.g. test build config or toolchain changes.
+@@ -1670,3 +1680,4 @@ _lines = [
+          ] + build_gn_logs
+ 
+ write_file("$root_build_dir/gn_logs.txt", _lines)
++}
+diff --git a/base/BUILD.gn b/base/BUILD.gn
+index 50ab67804..c450be866 100644
+--- a/base/BUILD.gn
++++ b/base/BUILD.gn
+@@ -1075,10 +1075,12 @@ component("base") {
+   # Used by metrics/crc32
+   deps += [ "//third_party/zlib" ]
+ 
+-  deps += [
+-    ":rust_logger",
+-    "//third_party/rust/serde_json_lenient/v0_2/wrapper",
+-  ]
++  if (enable_rust) {
++    deps += [
++      ":rust_logger",
++      "//third_party/rust/serde_json_lenient/v0_2/wrapper",
++    ]
++  }
+ 
+   # `raw_ptr` cannot be made a component due to CRT symbol issues.
+   # Its gateway to being a component is through `//base`, so we have
+@@ -2542,8 +2544,9 @@ if (is_android) {
+   }
+ }
+ 
+-rust_bindgen("logging_log_severity_bindgen") {
+-  # TODO(danakj): Maybe combine all base bindgen targets, or all base/logging
++if (enable_rust) {
++  rust_bindgen("logging_log_severity_bindgen") {
++    # TODO(danakj): Maybe combine all base bindgen targets, or all base/logging
+   # ones even) into a single GN target? But the GN rule needs to handle multiple
+   # headers then.
+   header = "logging/log_severity.h"
+@@ -2598,6 +2601,7 @@ rust_static_library("rust_logger") {
+ 
+   cxx_bindings = [ "logging/rust_logger.rs" ]
+ }
++}
+ 
+ if (is_linux || is_chromeos) {
+   # Split out as a separate target for two reasons:

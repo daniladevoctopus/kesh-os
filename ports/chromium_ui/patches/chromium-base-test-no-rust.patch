@@ -1,0 +1,48 @@
+diff --git a/base/test/BUILD.gn b/base/test/BUILD.gn
+index 561a9d8f83..cdb839593f 100644
+--- a/base/test/BUILD.gn
++++ b/base/test/BUILD.gn
+@@ -35,15 +35,17 @@ static_library("test_config") {
+   ]
+ }
+ 
+-rust_static_library("test_rust_logger_consumer") {
+-  allow_unsafe = true  # Unsafe needed for FFI
+-  testonly = true
+-  deps = [ "//third_party/rust/log/v0_4:lib" ]
+-  sources = [ "logging/test_rust_logger_consumer.rs" ]
++if (enable_rust) {
++  rust_static_library("test_rust_logger_consumer") {
++    allow_unsafe = true  # Unsafe needed for FFI
++    testonly = true
++    deps = [ "//third_party/rust/log/v0_4:lib" ]
++    sources = [ "logging/test_rust_logger_consumer.rs" ]
+ 
+-  crate_root = "logging/test_rust_logger_consumer.rs"
++    crate_root = "logging/test_rust_logger_consumer.rs"
+ 
+-  cxx_bindings = [ "logging/test_rust_logger_consumer.rs" ]
++    cxx_bindings = [ "logging/test_rust_logger_consumer.rs" ]
++  }
+ }
+ 
+ static_library("test_support") {
+@@ -199,7 +201,6 @@ static_library("test_support") {
+ 
+   public_deps = [
+     ":test_config",
+-    ":test_rust_logger_consumer",
+     "//base",
+     "//base:base_static",
+     "//base:i18n",
+@@ -208,6 +209,10 @@ static_library("test_support") {
+     "//testing/gtest",
+   ]
+ 
++  if (enable_rust) {
++    public_deps += [ ":test_rust_logger_consumer" ]
++  }
++
+   deps = [
+     ":proto_test_support",
+     "//testing/libfuzzer:fuzztest_init_support",
