@@ -1,0 +1,18 @@
+diff --git a/services/device/BUILD.gn b/services/device/BUILD.gn
+index 9b07e268b8..9f93a1c1db 100644
+--- a/services/device/BUILD.gn
++++ b/services/device/BUILD.gn
+@@ -291,7 +291,7 @@ source_set("tests") {
+       if (!is_fuchsia && !is_ios) {
+         # Fuchsia and iOS do not currently implement HidService.
+         sources += [ "hid/hid_service_unittest.cc" ]
+       }
+-      if (!is_ios) {
++      if (!is_ios && use_blink) {
+         sources += [ "hid/hid_connection_unittest.cc" ]
+         deps += [
+           ":usb_test_gadget",
+           "//net:test_support",
+           "//services/device/usb",
+         ]
+       }
