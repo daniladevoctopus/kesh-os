@@ -1,0 +1,25 @@
+diff --git a/components/lens/features.gni b/components/lens/features.gni
+index 7ac60ea963..4c73a09572 100644
+--- a/components/lens/features.gni
++++ b/components/lens/features.gni
+@@ -2,16 +2,17 @@
+ # Use of this source code is governed by a BSD-style license that can be
+ # found in the LICENSE file.
+ 
++import("//build/config/features.gni")
+ import("//build/config/ui.gni")
+ 
+ # iOS cannot depend on files in //chrome
+-if (!is_ios) {
++if (!is_ios && use_blink) {
+   import("//chrome/common/features.gni")
+ }
+ 
+ declare_args() {
+   # Includes Lens features in the build. toolkit_views is used to ensure Lens
+   # features are only included on Desktop devices running Chromium
+-  enable_lens_desktop = toolkit_views
++  enable_lens_desktop = toolkit_views && use_blink
+ }
+ 
+ declare_args() {
