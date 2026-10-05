@@ -122,6 +122,44 @@ else:
     print("USB mojo target already guarded")
 PY
 
+# Shared Blink module BUILD files are still parsed by a few generic Chromium
+# support targets. Do not let their template's default deps pull renderer/core
+# or generated renderer code into an explicit use_blink=false build.
+python3 - "$SRC/third_party/blink/renderer/modules/modules.gni" <<'PY'
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+text = path.read_text()
+marker = "# KeshOS no-Blink module dependency guard"
+if marker not in text:
+    if 'import("//build/config/features.gni")' not in text:
+        anchor = 'import("//third_party/blink/renderer/config.gni")\n'
+        if anchor not in text:
+            raise SystemExit("Blink modules config import not found")
+        text = text.replace(anchor, 'import("//build/config/features.gni")\n' + anchor, 1)
+    old = '''    deps = [
+      "//third_party/blink/renderer/core",
+      "//third_party/blink/renderer/modules:make_modules_generated",
+      "//third_party/icu",
+    ]
+'''
+    new = '''    # KeshOS no-Blink module dependency guard
+    deps = [ "//third_party/icu" ]
+    if (use_blink) {
+      deps += [
+        "//third_party/blink/renderer/core",
+        "//third_party/blink/renderer/modules:make_modules_generated",
+      ]
+    }
+'''
+    if old not in text:
+        raise SystemExit("Blink modules default deps block not found")
+    path.write_text(text.replace(old, new, 1))
+    print("Detached Blink module template from renderer/core for no-Blink build")
+else:
+    print("Blink module template already guarded")
+PY
+
 python3 - "$SRC/third_party/blink/public/BUILD.gn" <<'PY'
 from pathlib import Path
 import sys
