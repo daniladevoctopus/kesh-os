@@ -19,9 +19,8 @@ marker = "# KeshOS no-Rust CXX bridge guard"
 
 if marker in text:
     print("Base CXX bridge already guarded for no-Rust KeshOS")
-    raise SystemExit(0)
-
-old = '''  sources += [
+else:
+    old = '''  sources += [
     "containers/span_rust.h",
     "strings/string_view_rust.h",
   ]
@@ -31,7 +30,7 @@ old = '''  sources += [
   public_deps += [ "//build/rust:cxx_cppdeps" ]
 '''
 
-new = '''  # KeshOS no-Rust CXX bridge guard
+    new = '''  # KeshOS no-Rust CXX bridge guard
   # These headers and the CXX support library only exist when Chromium's
   # Rust/CXX bridge is enabled. The first OzoneKesh milestone is C++ only.
   if (enable_rust_cxx) {
@@ -46,9 +45,133 @@ new = '''  # KeshOS no-Rust CXX bridge guard
   }
 '''
 
-if old not in text:
-    raise SystemExit("expected base Rust/CXX source+dependency block not found")
+    if old not in text:
+        raise SystemExit("expected base Rust/CXX source+dependency block not found")
 
-path.write_text(text.replace(old, new, 1))
-print("Gated //base Rust/CXX bridge behind enable_rust_cxx")
+    path.write_text(text.replace(old, new, 1))
+    print("Gated //base Rust/CXX bridge behind enable_rust_cxx")
 PY
+
+# Chromium removed its C++ JSON parser after switching base::JSONReader to a
+# Rust implementation. KeshOS intentionally disables Rust for the first native
+# UI bring-up, so restore Chromium's own last C++ parser from the parent of the
+# removal commit and wire JSONReader to it. This keeps real JSON functionality
+# instead of introducing a stub just to satisfy the linker.
+LEGACY_JSON_COMMIT="86f79d7237bd4d73273f51614d431976aff5e1c3"
+for name in json_parser.h json_parser.cc; do
+  dst="$SRC/base/json/$name"
+  if [[ ! -f "$dst" ]]; then
+    git -C "$SRC" show "$LEGACY_JSON_COMMIT:base/json/$name" > "$dst"
+    echo "Restored Chromium legacy C++ JSON parser source: $name"
+  fi
+done
+
+python3 - "$FILE" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+marker = "# KeshOS legacy C++ JSON parser"
+if marker not in text:
+    old = '''    "json/json_common.h",
+    "json/json_reader.cc",
+    "json/json_reader.h",
+'''
+    new = '''    "json/json_common.h",
+    # KeshOS legacy C++ JSON parser
+    "json/json_parser.cc",
+    "json/json_parser.h",
+    "json/json_reader.cc",
+    "json/json_reader.h",
+'''
+    if old not in text:
+        raise SystemExit("base JSON source block not found")
+    path.write_text(text.replace(old, new, 1))
+    print("Added Chromium C++ JSON parser sources to //base")
+else:
+    print("Chromium C++ JSON parser sources already present in //base")
+PY
+
+JSON_READER="$SRC/base/json/json_reader.cc"
+if grep -q 'serde_json_lenient' "$JSON_READER"; then
+  cat > "$JSON_READER" <<'EOF'
+// Copyright 2012 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "base/json/json_reader.h"
+
+#include <string_view>
+#include <utility>
+
+#include "base/json/json_parser.h"
+#include "base/metrics/histogram_macros.h"
+#include "base/strings/strcat.h"
+#include "base/strings/string_number_conversions.h"
+
+namespace {
+const char kSecurityJsonParsingTime[] = "Security.JSONParser.ParsingTime";
+}  // namespace
+
+namespace base {
+
+std::string JSONReader::Error::ToString() const {
+  return base::StrCat({"line ", base::NumberToString(line), ", column ",
+                       base::NumberToString(column), ": ", message});
+}
+
+// static
+std::optional<Value> JSONReader::Read(std::string_view json,
+                                      int options,
+                                      size_t max_depth) {
+  SCOPED_UMA_HISTOGRAM_TIMER_MICROS(kSecurityJsonParsingTime);
+  internal::JSONParser parser(options, max_depth);
+  return parser.Parse(json);
+}
+
+// static
+std::optional<Value::Dict> JSONReader::ReadDict(std::string_view json,
+                                                int options,
+                                                size_t max_depth) {
+  std::optional<Value> value = Read(json, options, max_depth);
+  if (!value || !value->is_dict()) {
+    return std::nullopt;
+  }
+  return std::move(*value).TakeDict();
+}
+
+// static
+std::optional<Value::List> JSONReader::ReadList(std::string_view json,
+                                                int options,
+                                                size_t max_depth) {
+  std::optional<Value> value = Read(json, options, max_depth);
+  if (!value || !value->is_list()) {
+    return std::nullopt;
+  }
+  return std::move(*value).TakeList();
+}
+
+// static
+JSONReader::Result JSONReader::ReadAndReturnValueWithError(
+    std::string_view json,
+    int options) {
+  SCOPED_UMA_HISTOGRAM_TIMER_MICROS(kSecurityJsonParsingTime);
+  internal::JSONParser parser(options);
+  auto value = parser.Parse(json);
+  if (!value) {
+    Error error;
+    error.message = parser.GetErrorMessage();
+    error.line = parser.error_line();
+    error.column = parser.error_column();
+    return base::unexpected(std::move(error));
+  }
+  return std::move(*value);
+}
+
+}  // namespace base
+EOF
+  echo "Switched base::JSONReader to Chromium legacy C++ parser for no-Rust KeshOS"
+else
+  echo "base::JSONReader already uses the no-Rust C++ parser"
+fi
