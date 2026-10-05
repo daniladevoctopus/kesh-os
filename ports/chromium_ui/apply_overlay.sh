@@ -65,14 +65,11 @@ for NO_RUST_PATCH in \
   fi
 done
 
-# The persistent OpenFyde worktree can already contain earlier patches, so a
-# context-based git patch for this tiny test-only edge is fragile. Remove the
-# Blink USB dependency directly from the usb_test_gadget target while leaving
-# production Device Service code untouched.
+# Persistent checkout may carry previous patch generations, so use semantic
+# edits for tiny test-only edges whose surrounding context changes often.
 python3 - "$SRC/services/device/BUILD.gn" <<'PY'
 from pathlib import Path
 import sys
-
 path = Path(sys.argv[1])
 text = path.read_text()
 start = text.find('source_set("usb_test_gadget")')
@@ -90,6 +87,52 @@ if needle in block:
     print("Pruned Blink-only //services/device/usb from usb_test_gadget")
 else:
     print("usb_test_gadget already has no Blink USB dependency")
+PY
+
+python3 - "$SRC/third_party/blink/public/BUILD.gn" <<'PY'
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+text = path.read_text()
+
+def gate_list(text, marker, variable):
+    start = text.find(marker)
+    if start < 0:
+        raise SystemExit(f"target not found: {marker}")
+    end = text.find('\n}\n', start)
+    if end < 0:
+        raise SystemExit(f"target end not found: {marker}")
+    block = text[start:end + 3]
+    gated = f'  {variable} = []\n  if (use_blink) {{'
+    if gated in block:
+        return text, False
+    list_start = block.find(f'  {variable} = [')
+    if list_start < 0:
+        raise SystemExit(f"{variable} list not found in {marker}")
+    list_end = block.find('\n  ]', list_start)
+    if list_end < 0:
+        raise SystemExit(f"{variable} list end not found in {marker}")
+    list_end += len('\n  ]')
+    original = block[list_start:list_end]
+    lines = original.splitlines()
+    body = '\n'.join('  ' + line for line in lines)
+    replacement = f'  {variable} = []\n  if (use_blink) {{\n{body}\n  }}'
+    block = block[:list_start] + replacement + block[list_end:]
+    return text[:start] + block + text[end + 3:], True
+
+changed = False
+for marker, variable in [
+    ('group("blink")', 'deps'),
+    ('group("test_support")', 'public_deps'),
+    ('group("all_blink")', 'public_deps'),
+]:
+    text, did = gate_list(text, marker, variable)
+    changed = changed or did
+if changed:
+    path.write_text(text)
+    print("Gated Blink renderer/test groups behind use_blink")
+else:
+    print("Blink renderer/test groups already gated")
 PY
 
 echo "OzoneKesh overlay installed at: $SRC/keshos"
