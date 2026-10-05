@@ -125,14 +125,16 @@ for marker, variable in [
     ('group("blink")', 'deps'),
     ('group("test_support")', 'public_deps'),
     ('group("all_blink")', 'public_deps'),
+    ('source_set("blink_headers")', 'public_deps'),
+    ('source_set("blink_headers")', 'deps'),
 ]:
     text, did = gate_list(text, marker, variable)
     changed = changed or did
 if changed:
     path.write_text(text)
-    print("Gated Blink renderer/test groups behind use_blink")
+    print("Gated Blink renderer/public dependency lists behind use_blink")
 else:
-    print("Blink renderer/test groups already gated")
+    print("Blink renderer/public dependency lists already gated")
 PY
 
 echo "OzoneKesh overlay installed at: $SRC/keshos"
