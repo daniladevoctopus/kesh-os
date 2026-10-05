@@ -83,6 +83,14 @@ symbol_level = 0
 treat_warnings_as_errors = false
 use_custom_libcxx = true
 
+# The KeshOS target uses the host distro's clang driver. Chromium's patched
+# clang-only plugins (find-bad-constructs/raw-ptr/unsafe-buffers) are not
+# present there, so keep them off for the cross target.
+clang_use_chrome_plugins = false
+clang_use_raw_ptr_plugin = false
+clang_use_unsafe_buffers_plugin = false
+use_clang_modules = false
+
 enable_rust = false
 enable_rust_cxx = false
 EOF
