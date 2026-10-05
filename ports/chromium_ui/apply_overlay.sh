@@ -47,7 +47,6 @@ for NO_RUST_PATCH in \
   "$HERE/patches/chromium-mojom-prune-blink-variant.patch" \
   "$HERE/patches/chromium-google-apis-no-fyde-switches.patch" \
   "$HERE/patches/chromium-device-no-usb-tests.patch" \
-  "$HERE/patches/chromium-device-usb-gadget-no-blink.patch" \
   "$HERE/patches/chromium-lens-no-chrome.patch" \
   "$HERE/patches/chromium-skia-no-rust.patch" \
   "$HERE/patches/chromium-fontconfig-no-rust.patch" \
@@ -65,6 +64,33 @@ for NO_RUST_PATCH in \
     exit 5
   fi
 done
+
+# The persistent OpenFyde worktree can already contain earlier patches, so a
+# context-based git patch for this tiny test-only edge is fragile. Remove the
+# Blink USB dependency directly from the usb_test_gadget target while leaving
+# production Device Service code untouched.
+python3 - "$SRC/services/device/BUILD.gn" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+start = text.find('source_set("usb_test_gadget")')
+if start < 0:
+    raise SystemExit("usb_test_gadget target not found")
+end = text.find('\nsource_set(', start + 1)
+if end < 0:
+    end = len(text)
+block = text[start:end]
+needle = '    "//services/device/usb",\n'
+if needle in block:
+    block = block.replace(needle, '', 1)
+    text = text[:start] + block + text[end:]
+    path.write_text(text)
+    print("Pruned Blink-only //services/device/usb from usb_test_gadget")
+else:
+    print("usb_test_gadget already has no Blink USB dependency")
+PY
 
 echo "OzoneKesh overlay installed at: $SRC/keshos"
 echo
