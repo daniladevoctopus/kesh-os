@@ -52,6 +52,30 @@ else:
     print("Gated //base Rust/CXX bridge behind enable_rust_cxx")
 PY
 
+# rust_log_integration.cc is only the C++ half of base's Rust logger bridge and
+# unconditionally includes a generated rust_logger.rs.h. Keep it out of the
+# source list while Rust/CXX is disabled; the regular C++ logger remains.
+python3 - "$FILE" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+marker = "# KeshOS no-Rust logging integration sources"
+if marker not in text:
+    old = '''    "logging/rust_log_integration.cc",
+    "logging/rust_log_integration.h",
+'''
+    if old not in text:
+        raise SystemExit("base rust_log_integration source entries not found")
+    new = '''    # KeshOS no-Rust logging integration sources
+'''
+    path.write_text(text.replace(old, new, 1))
+    print("Removed Rust log integration sources from //base for KeshOS")
+else:
+    print("Rust log integration sources already removed for KeshOS")
+PY
+
 # Chromium removed its C++ JSON parser after switching base::JSONReader to a
 # Rust implementation. KeshOS intentionally disables Rust for the first native
 # UI bring-up, so restore Chromium's own last C++ parser from the exact parent
