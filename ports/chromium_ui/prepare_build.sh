@@ -45,6 +45,7 @@ bash "$HERE/fix_non_chromeos_fyde_switches.sh" "$CHROMIUM"
 bash "$HERE/fix_no_blink_content.sh" "$CHROMIUM"
 bash "$HERE/fix_base_no_rust_cxx.sh" "$CHROMIUM"
 bash "$HERE/fix_skia_libpng_visibility.sh" "$CHROMIUM"
+bash "$HERE/fix_partitionalloc_musl_cdefs.sh" "$CHROMIUM"
 
 mkdir -p "$CHROMIUM/out/KeshOS"
 cat > "$CHROMIUM/out/KeshOS/args.gn" <<EOF
