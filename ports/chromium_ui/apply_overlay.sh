@@ -51,6 +51,7 @@ for NO_RUST_PATCH in \
   "$HERE/patches/chromium-webnn-no-tests.patch" \
   "$HERE/patches/chromium-viz-service-minimal.patch" \
   "$HERE/patches/chromium-mojo-no-rust.patch" \
+  "$HERE/patches/chromium-mojom-no-blink-overrides.patch" \
   "$HERE/patches/chromium-google-apis-no-fyde-switches.patch" \
   "$HERE/patches/chromium-device-no-usb-tests.patch" \
   "$HERE/patches/chromium-skia-no-rust.patch" \

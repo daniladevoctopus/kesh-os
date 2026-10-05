@@ -1,0 +1,20 @@
+diff --git a/mojo/public/tools/bindings/mojom.gni b/mojo/public/tools/bindings/mojom.gni
+index c4d68e12a7..b486e79e3c 100644
+--- a/mojo/public/tools/bindings/mojom.gni
++++ b/mojo/public/tools/bindings/mojom.gni
+@@ -532,6 +532,15 @@ template("mojom") {
+     assert(defined(invoker.component_deps_blink))
+   }
+ 
++  # KeshOS intentionally builds the first Ozone milestone with use_blink=false.
++  # Some Chromium mojom targets still provide Blink-only dependency overrides.
++  # With the Blink variant disabled those values are valid but intentionally
++  # unused, so tell GN not to reject the target while generating the C++-only
++  # variant.
++  if (!use_blink && defined(invoker.overridden_deps_blink)) {
++    not_needed(invoker, [ "overridden_deps_blink", "component_deps_blink" ])
++  }
++
+   # Type-mapping may be disabled or we may not generate C++ bindings.
+   not_needed(invoker,
+              [
