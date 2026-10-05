@@ -1,0 +1,22 @@
+diff --git a/google_apis/BUILD.gn b/google_apis/BUILD.gn
+index 1f2c6b2f6c..6f47ebf4d4 100644
+--- a/google_apis/BUILD.gn
++++ b/google_apis/BUILD.gn
+@@ -188,12 +188,15 @@ component("google_apis") {
+   deps = [
+     ":proto",
+     "//build:branding_buildflags",
+     "//crypto",
+     "//mojo/public/cpp/bindings:struct_traits",
+     "//net",
+     "//services/network/public/mojom",
+-    "//fydeos/switches",
+   ]
++
++  if (is_chromeos) {
++    deps += [ "//fydeos/switches" ]
++  }
+ 
+   if (_use_official_google_keys_and_generate_metrics_key_header) {
+     deps += [ "internal:generate_metrics_key_header" ]
+   }
