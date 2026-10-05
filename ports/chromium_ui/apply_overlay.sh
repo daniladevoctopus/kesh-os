@@ -284,6 +284,80 @@ else:
     print("Content Shell targets already guarded")
 PY
 
+# FydeOS switch sources are ChromeOS-specific and import chromeos/rules.gni.
+# Generic policy code is still useful to Chromium UI infrastructure, but its
+# Fyde switch edge must not make a Linux-compile-compat KeshOS build pretend to
+# be ChromeOS just to get through GN generation.
+python3 - "$SRC/components/policy/core/common/BUILD.gn" <<'PY'
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+text = path.read_text()
+marker = "# KeshOS non-ChromeOS Fyde switch guard"
+if marker not in text:
+    target = 'source_set("internal")'
+    start = text.find(target)
+    if start < 0:
+        raise SystemExit("policy internal target not found")
+    end = text.find('\nstatic_library("test_support")', start)
+    if end < 0:
+        raise SystemExit("policy internal target end not found")
+    block = text[start:end]
+    dep = '    "//fydeos/switches",\n'
+    if dep not in block:
+        raise SystemExit("Fyde switches dependency not found in policy internal target")
+    block = block.replace(dep, '', 1)
+    anchor = '  allow_circular_includes_from = ['
+    pos = block.find(anchor)
+    if pos < 0:
+        raise SystemExit("policy allow_circular_includes_from anchor not found")
+    guard = (
+        '  # KeshOS non-ChromeOS Fyde switch guard\n'
+        '  if (is_chromeos) {\n'
+        '    deps += [ "//fydeos/switches" ]\n'
+        '  }\n\n'
+    )
+    block = block[:pos] + guard + block[pos:]
+    text = text[:start] + block + text[end:]
+    path.write_text(text)
+    print("Gated policy FydeOS switches behind is_chromeos")
+else:
+    print("Policy FydeOS switches already gated")
+PY
+
+# temporal_capi is solely a V8/Rust bridge in this Chromium revision. The first
+# OzoneKesh milestone intentionally has enable_rust=false and no V8/Blink, so
+# keep the group/config labels visible while preventing GN from instantiating
+# the Rust cargo crate in a no-Rust target graph.
+python3 - "$SRC/third_party/rust/temporal_capi/BUILD.gn" <<'PY'
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+text = path.read_text()
+marker = "# KeshOS no-Rust temporal_capi guard"
+if marker not in text:
+    rust_import = 'import("//build/config/rust.gni")\n\n'
+    if 'import("//build/config/rust.gni")' not in text:
+        copyright_end = text.find('\n\n')
+        if copyright_end < 0:
+            raise SystemExit("temporal_capi BUILD header not found")
+        text = text[:copyright_end + 2] + rust_import + text[copyright_end + 2:]
+    old = '  public_deps = [ "//third_party/rust/temporal_capi/v0_1:lib" ]\n'
+    if old not in text:
+        raise SystemExit("temporal_capi public_deps edge not found")
+    new = (
+        '  # KeshOS no-Rust temporal_capi guard\n'
+        '  public_deps = []\n'
+        '  if (enable_rust) {\n'
+        '    public_deps += [ "//third_party/rust/temporal_capi/v0_1:lib" ]\n'
+        '  }\n'
+    )
+    path.write_text(text.replace(old, new, 1))
+    print("Gated temporal_capi Rust crate behind enable_rust")
+else:
+    print("temporal_capi Rust crate already gated")
+PY
+
 echo "OzoneKesh overlay installed at: $SRC/keshos"
 echo
 echo "GN bootstrap args:"
