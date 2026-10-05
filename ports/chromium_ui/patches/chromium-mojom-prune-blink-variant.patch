@@ -1,0 +1,34 @@
+diff --git a/mojo/public/tools/bindings/mojom.gni b/mojo/public/tools/bindings/mojom.gni
+index b486e79e3c..9d3a8126be 100644
+--- a/mojo/public/tools/bindings/mojom.gni
++++ b/mojo/public/tools/bindings/mojom.gni
+@@ -574,8 +574,28 @@ template("mojom") {
+   if (defined(invoker.mojom_source_deps)) {
+     all_deps += invoker.mojom_source_deps
+   }
+   if (defined(invoker.mojom_blink_source_deps)) {
+-    all_deps += invoker.mojom_blink_source_deps
++    if (use_blink) {
++      all_deps += invoker.mojom_blink_source_deps
++    } else {
++      not_needed(invoker, [ "mojom_blink_source_deps" ])
++    }
++  }
++
++  # Blink-only knobs are legitimate on shared mojom declarations, even when an
++  # embedder deliberately disables the Blink variant. GN otherwise treats them
++  # as accidental assignments and aborts generation before the requested
++  # non-Blink C++ target can be built.
++  if (!use_blink) {
++    if (defined(invoker.visibility_blink)) {
++      not_needed(invoker, [ "visibility_blink" ])
++    }
++    if (defined(invoker.blink_cpp_configs)) {
++      not_needed(invoker, [ "blink_cpp_configs" ])
++    }
++    if (defined(invoker.blink_cpp_proxy_target)) {
++      not_needed(invoker, [ "blink_cpp_proxy_target" ])
++    }
+   }
+   not_needed([ "mojom_deps" ])
+ 
