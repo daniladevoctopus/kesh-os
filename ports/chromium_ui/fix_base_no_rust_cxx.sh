@@ -54,15 +54,39 @@ PY
 
 # Chromium removed its C++ JSON parser after switching base::JSONReader to a
 # Rust implementation. KeshOS intentionally disables Rust for the first native
-# UI bring-up, so restore Chromium's own last C++ parser from the parent of the
-# removal commit and wire JSONReader to it. This keeps real JSON functionality
-# instead of introducing a stub just to satisfy the linker.
+# UI bring-up, so restore Chromium's own last C++ parser from the exact parent
+# revision of that removal. Some gclient checkouts do not retain that historical
+# blob locally, therefore fall back to the immutable raw GitHub object.
 LEGACY_JSON_COMMIT="86f79d7237bd4d73273f51614d431976aff5e1c3"
 for name in json_parser.h json_parser.cc; do
   dst="$SRC/base/json/$name"
-  if [[ ! -f "$dst" ]]; then
-    git -C "$SRC" show "$LEGACY_JSON_COMMIT:base/json/$name" > "$dst"
-    echo "Restored Chromium legacy C++ JSON parser source: $name"
+  if [[ ! -s "$dst" ]]; then
+    tmp="${dst}.kesh-download"
+    rm -f "$tmp"
+    if git -C "$SRC" show "$LEGACY_JSON_COMMIT:base/json/$name" > "$tmp" 2>/dev/null && [[ -s "$tmp" ]]; then
+      mv "$tmp" "$dst"
+      echo "Restored Chromium legacy C++ JSON parser from local git: $name"
+    else
+      rm -f "$tmp"
+      url="https://raw.githubusercontent.com/openFyde/chromium/$LEGACY_JSON_COMMIT/base/json/$name"
+      if command -v curl >/dev/null 2>&1; then
+        curl -fsSL --retry 3 --connect-timeout 15 "$url" -o "$tmp"
+      else
+        python3 - "$url" "$tmp" <<'PY'
+import sys
+import urllib.request
+url, output = sys.argv[1], sys.argv[2]
+with urllib.request.urlopen(url, timeout=30) as response:
+    data = response.read()
+if not data:
+    raise SystemExit("downloaded empty Chromium JSON parser source")
+open(output, "wb").write(data)
+PY
+      fi
+      [[ -s "$tmp" ]] || { echo "failed to restore $name" >&2; exit 6; }
+      mv "$tmp" "$dst"
+      echo "Restored Chromium legacy C++ JSON parser from pinned upstream: $name"
+    fi
   fi
 done
 
