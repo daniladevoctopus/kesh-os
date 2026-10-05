@@ -89,6 +89,39 @@ else:
     print("usb_test_gadget already has no Blink USB dependency")
 PY
 
+# services/device/usb/mojo is browser/Blink USB plumbing. Keep its label
+# available so stray test/tooling dependencies can resolve during GN parsing,
+# but replace it with an empty group for the no-Blink KeshOS UI build.
+python3 - "$SRC/services/device/usb/mojo/BUILD.gn" <<'PY'
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+text = path.read_text()
+marker = "# KeshOS no-Blink USB mojo guard"
+if marker not in text:
+    import_line = 'import("//build/config/features.gni")\n\n'
+    if 'import("//build/config/features.gni")' not in text:
+        text = import_line + text
+    start = text.find('source_set("mojo")')
+    if start < 0:
+        raise SystemExit("USB mojo target not found")
+    body = text[start:].rstrip() + "\n"
+    prefix = text[:start]
+    guarded = (
+        marker + "\n"
+        "if (use_blink) {\n" +
+        "\n".join("  " + line if line else "" for line in body.splitlines()) +
+        "\n} else {\n"
+        "  group(\"mojo\") {\n"
+        "  }\n"
+        "}\n"
+    )
+    path.write_text(prefix + guarded)
+    print("Stubbed USB mojo target for no-Blink build")
+else:
+    print("USB mojo target already guarded")
+PY
+
 python3 - "$SRC/third_party/blink/public/BUILD.gn" <<'PY'
 from pathlib import Path
 import sys
