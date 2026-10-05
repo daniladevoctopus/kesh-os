@@ -26,13 +26,13 @@ concurrency:
 jobs:
   build:
     name: OzoneKesh + KeshOS ISO
-    runs-on: [self-hosted, linux, x64, keshos-builder]
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 240
 
     env:
       KESH_CHROMIUM_JOBS: "4"
       OPENFYDE_WORKSPACE: ${{ github.workspace }}/../openfyde-kesh-work
-      KESH_ARTIFACT_ROOT: ${{ runner.tool_cache }}/../keshos-build-artifacts
+      KESH_ARTIFACT_ROOT: ${{ github.workspace }}/../keshos-build-artifacts
 
     steps:
       - name: Checkout ChatGPT work branch
