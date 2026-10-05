@@ -40,11 +40,10 @@ if ! grep -q '^pdf_enable_rust_png_override = false$' "$PDFIUM_OVERRIDE"; then
   exit 4
 fi
 
-# Chromium 144 declares two Rust-backed //base targets even when an embedder
-# explicitly disables the target Rust toolchain. The KeshOS milestone is a
-# static musl C++/Skia executable, so apply the small pinned-source patch that
-# makes those declarations and dependencies follow enable_rust. Keep this
-# idempotent because tomorrow_build.sh is expected to be rerun incrementally.
+# Chromium/OpenFyde's global GN graph still declares several Rust/test/browser
+# branches even though the first KeshOS milestone is a static C++/Skia Ozone
+# executable. Apply small pinned-source patches that make those branches obey
+# the build flags used by OzoneKesh. Keep this idempotent for incremental runs.
 for NO_RUST_PATCH in \
   "$HERE/patches/chromium-base-no-rust.patch" \
   "$HERE/patches/chromium-base-test-no-rust.patch" \
@@ -52,6 +51,7 @@ for NO_RUST_PATCH in \
   "$HERE/patches/chromium-webnn-no-tests.patch" \
   "$HERE/patches/chromium-viz-service-minimal.patch" \
   "$HERE/patches/chromium-mojo-no-rust.patch" \
+  "$HERE/patches/chromium-google-apis-no-fyde-switches.patch" \
   "$HERE/patches/chromium-skia-no-rust.patch" \
   "$HERE/patches/chromium-fontconfig-no-rust.patch" \
   "$HERE/patches/chromium-ui-base-minimal.patch" \
@@ -59,12 +59,12 @@ for NO_RUST_PATCH in \
   "$HERE/patches/chromium-ui-resources-minimal.patch" \
   "$HERE/patches/chromium-ozone-no-tests.patch"; do
   if git -C "$SRC" apply --reverse --check "$NO_RUST_PATCH" >/dev/null 2>&1; then
-    echo "No-Rust patch already applied: $(basename "$NO_RUST_PATCH")"
+    echo "Pinned patch already applied: $(basename "$NO_RUST_PATCH")"
   elif git -C "$SRC" apply --check "$NO_RUST_PATCH" >/dev/null 2>&1; then
     git -C "$SRC" apply "$NO_RUST_PATCH"
-    echo "Applied no-Rust patch: $(basename "$NO_RUST_PATCH")"
+    echo "Applied pinned patch: $(basename "$NO_RUST_PATCH")"
   else
-    echo "failed to apply pinned Chromium no-Rust patch: $NO_RUST_PATCH" >&2
+    echo "failed to apply pinned Chromium patch: $NO_RUST_PATCH" >&2
     exit 5
   fi
 done
