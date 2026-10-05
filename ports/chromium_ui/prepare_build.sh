@@ -45,7 +45,7 @@ done
 ln -sfn "$SYSROOT_REAL" "$SYSROOT_LINK"
 
 "$HERE/apply_overlay.sh" "$CHROMIUM"
-"$HERE/fix_non_chromeos_fyde_switches.sh" "$CHROMIUM"
+bash "$HERE/fix_non_chromeos_fyde_switches.sh" "$CHROMIUM"
 
 mkdir -p "$CHROMIUM/out/KeshOS"
 cat > "$CHROMIUM/out/KeshOS/args.gn" <<EOF
