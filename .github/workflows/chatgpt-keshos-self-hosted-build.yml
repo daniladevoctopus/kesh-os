@@ -25,11 +25,14 @@ concurrency:
 
 jobs:
   build:
-    name: OzoneKesh + KeshOS ISO
+    name: KeshOS approved stage
     runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 240
 
     env:
+      # Stage gate: advance only after the user explicitly approves the next step.
+      # Valid values: gn, smoke, iso
+      KESH_APPROVED_STAGE: "gn"
       KESH_CHROMIUM_JOBS: "4"
       OPENFYDE_WORKSPACE: ${{ github.workspace }}/../openfyde-kesh-work
       KESH_ARTIFACT_ROOT: ${{ github.workspace }}/../keshos-build-artifacts
@@ -50,6 +53,7 @@ jobs:
           echo "runner: $(hostname)"
           echo "workspace: $GITHUB_WORKSPACE"
           echo "commit: $(git rev-parse HEAD)"
+          echo "approved stage: $KESH_APPROVED_STAGE"
           echo "cpu: $(nproc) threads"
           free -h || true
           df -h "$GITHUB_WORKSPACE" || true
@@ -106,24 +110,47 @@ jobs:
             echo "OpenFyde workspace: $OPENFYDE"
             echo "OpenFyde HEAD: $(git -C "$OPENFYDE/src" rev-parse HEAD)"
           else
-            echo "No persistent OpenFyde checkout found; bootstrap may create one in $OPENFYDE_WORKSPACE"
+            echo "ERROR: persistent OpenFyde checkout not found" >&2
+            exit 32
           fi
 
-      - name: Build OpenFyde OzoneKesh and KeshOS
-        id: full_build
+      - name: Run approved stage only
+        id: staged_build
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p build/bridge-logs
           {
-            echo "=== KeshOS self-hosted build ==="
+            echo "=== KeshOS staged self-hosted build ==="
             echo "started_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo "kesh_commit=$(git rev-parse HEAD)"
             echo "openfyde_workspace=$OPENFYDE_WORKSPACE"
             echo "sysroot=$(readlink -f toolchain/musl || true)"
+            echo "approved_stage=$KESH_APPROVED_STAGE"
             echo "jobs=$KESH_CHROMIUM_JOBS"
             echo
-            ./ports/chromium_ui/tomorrow_build.sh
+
+            case "$KESH_APPROVED_STAGE" in
+              gn)
+                echo "[stage:gn] Applying overlay and running GN generation only."
+                ./ports/chromium_ui/prepare_build.sh "$OPENFYDE_WORKSPACE/src" --gen
+                echo "[stage:gn] SUCCESS. Stopping before Ninja compile."
+                ;;
+              smoke)
+                echo "[stage:smoke] Building and validating kesh_smoke only."
+                KESH_CHROMIUM_JOBS="$KESH_CHROMIUM_JOBS" \
+                  ./ports/chromium_ui/build_smoke.sh "$OPENFYDE_WORKSPACE/src"
+                echo "[stage:smoke] SUCCESS. Stopping before KeshOS ISO build."
+                ;;
+              iso)
+                echo "[stage:iso] Running the full approved pipeline through ISO."
+                ./ports/chromium_ui/tomorrow_build.sh
+                ;;
+              *)
+                echo "Unknown KESH_APPROVED_STAGE=$KESH_APPROVED_STAGE" >&2
+                exit 64
+                ;;
+            esac
           } 2>&1 | tee build/bridge-logs/full-build.log
 
       - name: Capture diagnostics
@@ -137,6 +164,7 @@ jobs:
             echo "workflow_run=$GITHUB_RUN_ID"
             echo "workflow_attempt=$GITHUB_RUN_ATTEMPT"
             echo "kesh_commit=$(git rev-parse HEAD 2>/dev/null)"
+            echo "approved_stage=$KESH_APPROVED_STAGE"
             echo "finished_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo
             echo "=== git status ==="
@@ -146,7 +174,11 @@ jobs:
             readlink -f toolchain/musl 2>/dev/null || true
             ls -lh toolchain/musl/lib/libc.a 2>/dev/null || true
             echo
-            echo "=== generated outputs ==="
+            echo "=== GN outputs ==="
+            ls -lh "$OPENFYDE_WORKSPACE/src/out/KeshOS/args.gn" \
+                   "$OPENFYDE_WORKSPACE/src/out/KeshOS/build.ninja" 2>/dev/null || true
+            echo
+            echo "=== later-stage outputs ==="
             ls -lh build/keshos.iso ports_bin/kesh_smoke.elf 2>/dev/null || true
             echo
             echo "=== OpenFyde checkout ==="
@@ -161,17 +193,19 @@ jobs:
             df -h "$GITHUB_WORKSPACE" "$OPENFYDE_WORKSPACE" 2>/dev/null || true
           } > build/bridge-logs/diagnostics.txt 2>&1
 
-      - name: Preserve successful local outputs
-        if: success()
+      - name: Preserve stage logs locally
+        if: always()
         shell: bash
         run: |
-          set -euo pipefail
+          set +e
           DEST="$KESH_ARTIFACT_ROOT/run-$GITHUB_RUN_ID-attempt-$GITHUB_RUN_ATTEMPT"
           mkdir -p "$DEST"
-          cp -f build/keshos.iso "$DEST/keshos.iso"
-          cp -f ports_bin/kesh_smoke.elf "$DEST/kesh_smoke.elf"
-          cp -f build/bridge-logs/full-build.log "$DEST/full-build.log"
-          cp -f build/bridge-logs/diagnostics.txt "$DEST/diagnostics.txt"
+          cp -f build/bridge-logs/full-build.log "$DEST/full-build.log" 2>/dev/null || true
+          cp -f build/bridge-logs/diagnostics.txt "$DEST/diagnostics.txt" 2>/dev/null || true
+          cp -f "$OPENFYDE_WORKSPACE/src/out/KeshOS/args.gn" "$DEST/args.gn" 2>/dev/null || true
+          cp -f "$OPENFYDE_WORKSPACE/src/out/KeshOS/build.ninja" "$DEST/build.ninja" 2>/dev/null || true
+          cp -f ports_bin/kesh_smoke.elf "$DEST/kesh_smoke.elf" 2>/dev/null || true
+          cp -f build/keshos.iso "$DEST/keshos.iso" 2>/dev/null || true
           printf '%s\n' "$DEST" | tee build/bridge-logs/local-artifact-path.txt
           ls -lh "$DEST"
 
@@ -185,7 +219,7 @@ jobs:
           retention-days: 14
 
       - name: Upload smoke binary
-        if: success()
+        if: success() && env.KESH_APPROVED_STAGE != 'gn'
         uses: actions/upload-artifact@v4
         with:
           name: kesh-smoke-${{ github.run_id }}-${{ github.run_attempt }}
