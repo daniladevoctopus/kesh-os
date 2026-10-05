@@ -19,8 +19,6 @@ if [[ ! -d "$SYSROOT_REAL/include" || ! -d "$SYSROOT_REAL/lib" ]]; then
   exit 3
 fi
 
-# OzoneKesh now carries the tiny framebuffer/input ABI definitions it needs,
-# so the KeshOS sysroot does not need Linux kernel UAPI header packages.
 if [[ ! -e "$SYSROOT_REAL/lib/libc.a" ]]; then
   echo "KeshOS sysroot is missing static musl libc: $SYSROOT_REAL/lib/libc.a"
   exit 32
@@ -40,14 +38,13 @@ for tool in clang clang++ llvm-ar llvm-nm llvm-readelf; do
   fi
 done
 
-# The KeshOS checkout path may contain spaces/Cyrillic. Give Ninja a stable
-# no-space sysroot path.
 ln -sfn "$SYSROOT_REAL" "$SYSROOT_LINK"
 
 "$HERE/apply_overlay.sh" "$CHROMIUM"
 bash "$HERE/fix_non_chromeos_fyde_switches.sh" "$CHROMIUM"
 bash "$HERE/fix_no_blink_content.sh" "$CHROMIUM"
 bash "$HERE/fix_base_no_rust_cxx.sh" "$CHROMIUM"
+bash "$HERE/fix_skia_libpng_visibility.sh" "$CHROMIUM"
 
 mkdir -p "$CHROMIUM/out/KeshOS"
 cat > "$CHROMIUM/out/KeshOS/args.gn" <<EOF
@@ -77,8 +74,6 @@ ozone_platform_x11 = false
 ozone_platform_cast = false
 ozone_platform_flatland = false
 
-# First milestone: software Skia only. Keep the binary small enough for the
-# current KeshOS loader and avoid GPU/driver dependencies until Ozone works.
 enable_vulkan = false
 is_component_build = false
 is_debug = false
@@ -88,8 +83,6 @@ symbol_level = 0
 treat_warnings_as_errors = false
 use_custom_libcxx = true
 
-# Chromium's normal Linux Rust target is GNU. Ozone smoke does not need Rust and
-# keeping it disabled removes another cross-toolchain variable for bring-up.
 enable_rust = false
 enable_rust_cxx = false
 EOF
@@ -111,11 +104,8 @@ if [[ "$DO_GEN" == "--gen" ]]; then
     exit 5
   fi
 
-  # Chromium's normal root emits every target defined by every BUILD file that
-  # gets evaluated. --root-target chooses the starting BUILD file, while
-  # --root-pattern restricts the emitted graph to the smoke target and its
-  # transitive dependency closure. This avoids unrelated browser/Ash/test graph
-  # branches during the first OzoneKesh milestone.
+  # Restrict generation to the smoke target and its transitive closure. This
+  # keeps browser, Ash and unrelated test targets outside the first milestone.
   (cd "$CHROMIUM" && "$GN" gen out/KeshOS \
     --root-target=//keshos/ozone:kesh_smoke \
     --root-pattern=//keshos/ozone:kesh_smoke)
