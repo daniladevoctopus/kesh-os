@@ -49,12 +49,65 @@ jobs:
           set -euo pipefail
           echo "runner: $(hostname)"
           echo "workspace: $GITHUB_WORKSPACE"
-          echo "openfyde cache: $OPENFYDE_WORKSPACE"
           echo "commit: $(git rev-parse HEAD)"
           echo "cpu: $(nproc) threads"
           free -h || true
           df -h "$GITHUB_WORKSPACE" || true
           mkdir -p "$KESH_ARTIFACT_ROOT"
+
+      - name: Attach persistent local build state
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SYSROOT=""
+          for candidate in \
+            "/home/danila/Рабочий стол/keshos/toolchain/musl" \
+            "/home/danila/keshos/toolchain/musl"; do
+            if [[ -f "$candidate/lib/libc.a" ]]; then
+              SYSROOT="$candidate"
+              break
+            fi
+          done
+          if [[ -z "$SYSROOT" ]]; then
+            SYSROOT_FILE="$(find /home/danila -maxdepth 6 -type f -path '*/toolchain/musl/lib/libc.a' -print -quit 2>/dev/null || true)"
+            if [[ -n "$SYSROOT_FILE" ]]; then
+              SYSROOT="${SYSROOT_FILE%/lib/libc.a}"
+            fi
+          fi
+          if [[ -z "$SYSROOT" || ! -f "$SYSROOT/lib/libc.a" ]]; then
+            echo "ERROR: no persistent KeshOS musl sysroot with lib/libc.a found under /home/danila" >&2
+            exit 31
+          fi
+
+          mkdir -p "$GITHUB_WORKSPACE/toolchain"
+          rm -rf "$GITHUB_WORKSPACE/toolchain/musl"
+          ln -s "$SYSROOT" "$GITHUB_WORKSPACE/toolchain/musl"
+          echo "KeshOS sysroot: $SYSROOT"
+
+          OPENFYDE=""
+          for candidate in \
+            "/home/danila/Рабочий стол/openfyde-kesh-work" \
+            "/home/danila/openfyde-kesh-work" \
+            "$OPENFYDE_WORKSPACE"; do
+            if [[ -d "$candidate/src/.git" ]]; then
+              OPENFYDE="$candidate"
+              break
+            fi
+          done
+          if [[ -z "$OPENFYDE" ]]; then
+            OPENFYDE_SRC="$(find /home/danila -maxdepth 5 -type d -path '*/openfyde-kesh-work/src/.git' -print -quit 2>/dev/null || true)"
+            if [[ -n "$OPENFYDE_SRC" ]]; then
+              OPENFYDE="${OPENFYDE_SRC%/src/.git}"
+            fi
+          fi
+          if [[ -n "$OPENFYDE" ]]; then
+            echo "OPENFYDE_WORKSPACE=$OPENFYDE" >> "$GITHUB_ENV"
+            echo "OpenFyde workspace: $OPENFYDE"
+            echo "OpenFyde HEAD: $(git -C "$OPENFYDE/src" rev-parse HEAD)"
+          else
+            echo "No persistent OpenFyde checkout found; bootstrap may create one in $OPENFYDE_WORKSPACE"
+          fi
 
       - name: Build OpenFyde OzoneKesh and KeshOS
         id: full_build
@@ -67,6 +120,7 @@ jobs:
             echo "started_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo "kesh_commit=$(git rev-parse HEAD)"
             echo "openfyde_workspace=$OPENFYDE_WORKSPACE"
+            echo "sysroot=$(readlink -f toolchain/musl || true)"
             echo "jobs=$KESH_CHROMIUM_JOBS"
             echo
             ./ports/chromium_ui/tomorrow_build.sh
@@ -87,6 +141,10 @@ jobs:
             echo
             echo "=== git status ==="
             git status --short
+            echo
+            echo "=== sysroot ==="
+            readlink -f toolchain/musl 2>/dev/null || true
+            ls -lh toolchain/musl/lib/libc.a 2>/dev/null || true
             echo
             echo "=== generated outputs ==="
             ls -lh build/keshos.iso ports_bin/kesh_smoke.elf 2>/dev/null || true
