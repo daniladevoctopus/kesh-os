@@ -9,6 +9,7 @@ fi
 SRC="$(cd "$1" && pwd)"
 INTERNALS="$SRC/base/allocator/partition_allocator/src/partition_alloc/shim/allocator_shim_internals.h"
 DISPATCH="$SRC/base/allocator/partition_allocator/src/partition_alloc/shim/allocator_shim_default_dispatch_to_partition_alloc.cc"
+PROCESS_METRICS="$SRC/base/process/process_metrics_posix.cc"
 
 python3 - "$INTERNALS" "$DISPATCH" <<'PY'
 from pathlib import Path
@@ -83,4 +84,59 @@ elif new_mallinfo not in text:
 
 dispatch.write_text(text)
 print("PartitionAlloc glibc-only mallinfo shim disabled for musl")
+PY
+
+# Chromium's Linux ProcessMetrics assumes every Linux libc has mallinfo().
+# musl intentionally does not implement mallinfo/mallinfo2, so the KeshOS
+# cross target must not compile that glibc-only path. Returning 0 is already a
+# supported fallback semantics for platforms where malloc usage is unavailable.
+python3 - "$PROCESS_METRICS" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+marker = "// KeshOS musl: mallinfo is unavailable."
+
+if marker in text:
+    print("ProcessMetrics mallinfo fallback already ready for musl")
+else:
+    old = '''size_t GetMallocUsageMallinfo() {
+#if defined(__GLIBC__) && defined(__GLIBC_PREREQ)
+#if __GLIBC_PREREQ(2, 33)
+#define MALLINFO2_FOUND_IN_LIBC
+  struct mallinfo2 minfo = mallinfo2();
+#endif
+#endif  // defined(__GLIBC__) && defined(__GLIBC_PREREQ)
+#if !defined(MALLINFO2_FOUND_IN_LIBC)
+  struct mallinfo minfo = mallinfo();
+#endif
+#undef MALLINFO2_FOUND_IN_LIBC
+  return checked_cast<size_t>(minfo.hblkhd + minfo.arena);
+}
+'''
+    new = '''size_t GetMallocUsageMallinfo() {
+#if !defined(__GLIBC__) && !defined(__ANDROID__)
+  // KeshOS musl: mallinfo is unavailable.
+  // Memory accounting can be wired to a native KeshOS allocator API later.
+  return 0;
+#else
+#if defined(__GLIBC__) && defined(__GLIBC_PREREQ)
+#if __GLIBC_PREREQ(2, 33)
+#define MALLINFO2_FOUND_IN_LIBC
+  struct mallinfo2 minfo = mallinfo2();
+#endif
+#endif  // defined(__GLIBC__) && defined(__GLIBC_PREREQ)
+#if !defined(MALLINFO2_FOUND_IN_LIBC)
+  struct mallinfo minfo = mallinfo();
+#endif
+#undef MALLINFO2_FOUND_IN_LIBC
+  return checked_cast<size_t>(minfo.hblkhd + minfo.arena);
+#endif
+}
+'''
+    if old not in text:
+        raise SystemExit("Chromium ProcessMetrics mallinfo block not found")
+    path.write_text(text.replace(old, new, 1))
+    print("Disabled Chromium mallinfo metrics on musl KeshOS target")
 PY
