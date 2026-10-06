@@ -23,6 +23,7 @@ KERNEL_C_SRCS = [
     ("kernel/kernel.c", "build/kernel/kernel.o"),
     ("kernel/cmd_mode.c", "build/kernel/cmd_mode.o"),
     ("kernel/linux_syscall.c", "build/kernel/linux_syscall.o"),
+    ("kernel/linux_signal.c", "build/kernel/linux_signal.o"),
     ("kernel/unix_ipc.c", "build/kernel/unix_ipc.o"),
     ("kernel/evdev.c", "build/kernel/evdev.o"),
     ("kernel/drm_fb.c", "build/kernel/drm_fb.o"),

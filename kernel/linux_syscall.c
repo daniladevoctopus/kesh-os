@@ -1,4 +1,5 @@
 #include "linux_syscall.h"
+#include "linux_signal.h"
 #include "unix_ipc.h"
 #include "syscall.h"
 #include "process.h"
@@ -32,6 +33,7 @@
 #define LINUX_SYS_BRK            12
 #define LINUX_SYS_RT_SIGACTION   13
 #define LINUX_SYS_RT_SIGPROCMASK 14
+#define LINUX_SYS_RT_SIGRETURN   15
 #define LINUX_SYS_IOCTL          16
 #define LINUX_SYS_WRITEV         20
 #define LINUX_SYS_ACCESS         21
@@ -59,6 +61,7 @@
 #define LINUX_SYS_EXECVE         59
 #define LINUX_SYS_EXIT           60
 #define LINUX_SYS_WAIT4          61
+#define LINUX_SYS_KILL           62
 #define LINUX_SYS_UNAME          63
 #define LINUX_SYS_GETRLIMIT      97
 #define LINUX_SYS_FCNTL          72
@@ -70,6 +73,8 @@
 #define LINUX_SYS_GETGID         104
 #define LINUX_SYS_GETEUID        107
 #define LINUX_SYS_GETEGID        108
+#define LINUX_SYS_RT_SIGPENDING  127
+#define LINUX_SYS_SIGALTSTACK    131
 #define LINUX_SYS_PRCTL          157
 #define LINUX_SYS_ARCH_PRCTL     158
 #define LINUX_SYS_GETTID         186
@@ -85,6 +90,7 @@
 #define LINUX_SYS_EXIT_GROUP     231
 #define LINUX_SYS_EPOLL_WAIT     232
 #define LINUX_SYS_EPOLL_CTL      233
+#define LINUX_SYS_TGKILL         234
 #define LINUX_SYS_OPENAT         257
 #define LINUX_SYS_NEWFSTATAT     262
 #define LINUX_SYS_PSELECT6       270
@@ -674,12 +680,14 @@ int64_t linux_syscall_dispatcher(uint64_t num, uint64_t a1, uint64_t a2, uint64_
             return credentials ? credentials->gid : -L_ESRCH;
         }
 
-        case LINUX_SYS_TKILL: {
-            if ((int64_t)a1 != linux_current_tid()) return -L_ESRCH;
-            if ((int)a2 == 0) return 0;
-            g_syscall_should_yield = 2;
-            return 0;
-        }
+        case LINUX_SYS_KILL:
+            return linux_signal_kill(process_current_id(), (int)a1, (int)a2);
+
+        case LINUX_SYS_TKILL:
+            return linux_signal_tkill(process_current_id(), (int)a1, (int)a2);
+
+        case LINUX_SYS_TGKILL:
+            return linux_signal_tgkill(process_current_id(), (int)a1, (int)a2, (int)a3);
 
         /* The scheduler currently runs userspace on the BSP, but exposing a
          * truthful online mask lets Qt size its render/thread pools without
@@ -1313,11 +1321,22 @@ int64_t linux_syscall_dispatcher(uint64_t num, uint64_t a1, uint64_t a2, uint64_
             return linux_copy_out(a4, &limit, sizeof(limit)) == 0 ? 0 : -L_EFAULT;
         }
 
-        /* rt_sigaction / rt_sigprocmask: stub */
+        /* Stateful Linux signal ABI.  User-handler frame delivery and
+         * rt_sigreturn are implemented separately in the return-to-user path. */
         case LINUX_SYS_RT_SIGACTION:
-        case LINUX_SYS_RT_SIGPROCMASK: {
-            return 0;
-        }
+            return linux_signal_rt_sigaction(process_current_id(), (int)a1, a2, a3, a4);
+
+        case LINUX_SYS_RT_SIGPROCMASK:
+            return linux_signal_rt_sigprocmask(process_current_id(), process_current_thread_id(),
+                                               (int)a1, a2, a3, a4);
+
+        case LINUX_SYS_RT_SIGPENDING:
+            return linux_signal_rt_sigpending(process_current_id(), process_current_thread_id(),
+                                              a1, a2);
+
+        case LINUX_SYS_SIGALTSTACK:
+            return linux_signal_sigaltstack(process_current_id(), process_current_thread_id(),
+                                            a1, a2);
 
         /* open / openat */
         case LINUX_SYS_OPEN:

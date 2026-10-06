@@ -1,5 +1,6 @@
 // шедулер процессов и переключение контекста
 #include "process.h"
+#include "linux_signal.h"
 #include "memory.h"
 #include "gdt.h"
 #include "elf.h"
@@ -49,6 +50,7 @@ static void process_copy_linux_name(char out[16], const char *name) {
 
 void process_init(void) {
     for (int i = 0; i < MAX_PROCESSES; i++) {
+        linux_signal_reset_process(i);
         g_processes[i].id = i;
         g_processes[i].state = PROCESS_STATE_UNUSED;
         g_processes[i].controlling_pty = -1;
@@ -168,6 +170,7 @@ static process_t* process_spawn_elf_with_permissions(const char *name, const voi
     }
 
     process_t *proc = &g_processes[slot];
+    linux_signal_reset_process(slot);
     int n = 0;
     const char *src_name = name ? name : "user_app";
     while (src_name[n] && n < 31) {
