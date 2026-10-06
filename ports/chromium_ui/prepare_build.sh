@@ -91,6 +91,31 @@ if negative_new not in h_text:
 print("Chromium resolver header adapted for musl global state")
 PY
 
+# Chromium normally treats Expat as a system library on Linux because regular
+# desktop Linux pulls it in through Fontconfig. The KeshOS target deliberately
+# has no host Fontconfig/Expat in its musl sysroot, so build Chromium's bundled
+# Expat only for the KeshOS toolchain. Host generator tools keep their normal
+# Linux behavior.
+python3 - "$CHROMIUM/third_party/expat/BUILD.gn" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+old = '''if (((is_linux && !is_castos) || is_chromeos) && !use_fuzzing_engine) {
+'''
+new = '''if (((is_linux && !is_castos) || is_chromeos) && !use_fuzzing_engine &&
+    current_toolchain != "//keshos/toolchain:kesh_x64") {
+'''
+if new in text:
+    print("Bundled Expat already enabled for the KeshOS toolchain")
+elif old in text:
+    path.write_text(text.replace(old, new, 1))
+    print("Enabled Chromium bundled Expat for the KeshOS toolchain")
+else:
+    raise SystemExit("third_party/expat Linux system-library condition not found")
+PY
+
 mkdir -p "$CHROMIUM/out/KeshOS"
 cat > "$CHROMIUM/out/KeshOS/args.gn" <<EOF
 target_os = "linux"
@@ -103,6 +128,8 @@ use_sysroot = false
 use_blink = false
 use_glib = false
 use_dbus = false
+use_gio = false
+use_udev = false
 use_gtk = false
 use_qt = false
 media_use_symphonia = false
