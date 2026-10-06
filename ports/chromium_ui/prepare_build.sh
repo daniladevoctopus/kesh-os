@@ -47,6 +47,44 @@ bash "$HERE/fix_base_no_rust_cxx.sh" "$CHROMIUM"
 bash "$HERE/fix_skia_libpng_visibility.sh" "$CHROMIUM"
 bash "$HERE/fix_partitionalloc_musl_cdefs.sh" "$CHROMIUM"
 
+# Chromium's Linux resolver wrapper assumes glibc's re-entrant res_ninit /
+# res_nclose APIs. musl intentionally exposes only the global resolver state
+# through res_init() + _res. Treat non-glibc Linux like Chromium's existing
+# OpenBSD/Fuchsia path so the smoke build stays inside the KeshOS musl ABI.
+python3 - "$CHROMIUM/net/dns/public/scoped_res_state.cc" \
+          "$CHROMIUM/net/dns/public/scoped_res_state.h" <<'PY'
+from pathlib import Path
+import sys
+
+cc = Path(sys.argv[1])
+h = Path(sys.argv[2])
+
+old = "BUILDFLAG(IS_OPENBSD) || BUILDFLAG(IS_FUCHSIA)"
+new = "BUILDFLAG(IS_OPENBSD) || BUILDFLAG(IS_FUCHSIA) || \\\n    (BUILDFLAG(IS_LINUX) && !defined(__GLIBC__))"
+
+cc_text = cc.read_text()
+if new not in cc_text:
+    count = cc_text.count(old)
+    if count != 3:
+        raise SystemExit(f"expected 3 resolver platform guards, found {count}")
+    cc_text = cc_text.replace(old, new)
+    cc.write_text(cc_text)
+    print("Adapted Chromium resolver state to musl res_init/_res")
+else:
+    print("Chromium resolver state already adapted for musl")
+
+h_text = h.read_text()
+if new not in h_text:
+    count = h_text.count(old)
+    if count != 1:
+        raise SystemExit(f"expected 1 resolver header platform guard, found {count}")
+    h_text = h_text.replace(old, new)
+    h.write_text(h_text)
+    print("Adapted Chromium resolver header to musl global state")
+else:
+    print("Chromium resolver header already adapted for musl")
+PY
+
 mkdir -p "$CHROMIUM/out/KeshOS"
 cat > "$CHROMIUM/out/KeshOS/args.gn" <<EOF
 target_os = "linux"
