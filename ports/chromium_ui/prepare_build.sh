@@ -64,6 +64,12 @@ use_qt = false
 media_use_symphonia = false
 libyuv_disable_jpeg = true
 
+# HTTP Negotiate/Kerberos pulls the host GSSAPI stack into Chromium's generic
+# Linux build. KeshOS does not expose Kerberos/GSSAPI yet and the smoke target
+# does not need enterprise HTTP auth, so keep that optional feature out of the
+# first native UI bring-up rather than leaking host headers into the musl target.
+use_kerberos = false
+
 use_ozone = true
 ozone_auto_platforms = false
 ozone_extra_path = "//keshos/ozone_extra.gni"
