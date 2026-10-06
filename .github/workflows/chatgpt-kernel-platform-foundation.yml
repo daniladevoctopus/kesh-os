@@ -1,0 +1,80 @@
+name: ChatGPT KeshOS Kernel Platform Foundation
+
+on:
+  push:
+    branches:
+      - chatgpt/keshos-openfyde-work
+    paths:
+      - .github/workflows/chatgpt-kernel-platform-foundation.yml
+      - tools/apply_kernel_signal_foundation.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: chatgpt-keshos-kernel-platform
+  cancel-in-progress: false
+
+jobs:
+  kernel-platform:
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout assistant work branch
+        uses: actions/checkout@v4
+        with:
+          ref: chatgpt/keshos-openfyde-work
+          fetch-depth: 0
+
+      - name: Guard branch and clean worktree
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "chatgpt/keshos-openfyde-work"
+          git status --short
+          test -z "$(git status --porcelain)"
+
+      - name: Apply kernel platform signal foundation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/apply_kernel_signal_foundation.py
+          git diff --check
+          git diff -- kernel/linux_syscall.c kernel/process.c generate_ninja.py
+
+      - name: Persist kernel integration on assistant branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- kernel/linux_syscall.c kernel/process.c generate_ninja.py; then
+            echo "Kernel signal integration already persisted."
+            exit 0
+          fi
+          git config user.name "ChatGPT KeshOS Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add kernel/linux_syscall.c kernel/process.c generate_ninja.py
+          git commit -m "kernel: wire Linux signal compatibility foundation [skip ci]"
+          git push origin HEAD:chatgpt/keshos-openfyde-work
+
+      - name: Generate native KeshOS Ninja graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 generate_ninja.py
+
+      - name: Build native kernel only
+        shell: bash
+        run: |
+          set -euo pipefail
+          ninja -j4 build/kernel.elf
+
+      - name: Validate signal objects and kernel ELF
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s build/kernel.elf
+          file build/kernel.elf
+          readelf -h build/kernel.elf
+          nm build/kernel.elf | grep -E 'linux_signal_(rt_sigaction|rt_sigprocmask|kill|tgkill|take_pending)'
+          echo "Native kernel signal foundation build validation passed."
