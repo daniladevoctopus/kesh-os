@@ -59,30 +59,36 @@ import sys
 cc = Path(sys.argv[1])
 h = Path(sys.argv[2])
 
-old = "BUILDFLAG(IS_OPENBSD) || BUILDFLAG(IS_FUCHSIA)"
-new = "BUILDFLAG(IS_OPENBSD) || BUILDFLAG(IS_FUCHSIA) || \\\n    (BUILDFLAG(IS_LINUX) && !defined(__GLIBC__))"
+positive_old = "#if BUILDFLAG(IS_OPENBSD) || BUILDFLAG(IS_FUCHSIA)"
+positive_new = "#if BUILDFLAG(IS_OPENBSD) || BUILDFLAG(IS_FUCHSIA) || \\\n    (BUILDFLAG(IS_LINUX) && !defined(__GLIBC__))"
+negative_old = "#if !BUILDFLAG(IS_OPENBSD) && !BUILDFLAG(IS_FUCHSIA)"
+negative_new = "#if !BUILDFLAG(IS_OPENBSD) && !BUILDFLAG(IS_FUCHSIA) && \\\n    !(BUILDFLAG(IS_LINUX) && !defined(__GLIBC__))"
 
 cc_text = cc.read_text()
-if new not in cc_text:
-    count = cc_text.count(old)
-    if count != 3:
-        raise SystemExit(f"expected 3 resolver platform guards, found {count}")
-    cc_text = cc_text.replace(old, new)
-    cc.write_text(cc_text)
-    print("Adapted Chromium resolver state to musl res_init/_res")
-else:
-    print("Chromium resolver state already adapted for musl")
+if positive_new not in cc_text:
+    if cc_text.count(positive_old) != 2:
+        raise SystemExit(
+            f"expected 2 positive resolver guards, found {cc_text.count(positive_old)}"
+        )
+    cc_text = cc_text.replace(positive_old, positive_new)
+if negative_new not in cc_text:
+    if cc_text.count(negative_old) != 1:
+        raise SystemExit(
+            f"expected 1 negative resolver guard, found {cc_text.count(negative_old)}"
+        )
+    cc_text = cc_text.replace(negative_old, negative_new, 1)
+cc.write_text(cc_text)
+print("Chromium resolver source adapted for musl res_init/_res")
 
 h_text = h.read_text()
-if new not in h_text:
-    count = h_text.count(old)
-    if count != 1:
-        raise SystemExit(f"expected 1 resolver header platform guard, found {count}")
-    h_text = h_text.replace(old, new)
+if negative_new not in h_text:
+    if h_text.count(negative_old) != 1:
+        raise SystemExit(
+            f"expected 1 resolver header guard, found {h_text.count(negative_old)}"
+        )
+    h_text = h_text.replace(negative_old, negative_new, 1)
     h.write_text(h_text)
-    print("Adapted Chromium resolver header to musl global state")
-else:
-    print("Chromium resolver header already adapted for musl")
+print("Chromium resolver header adapted for musl global state")
 PY
 
 mkdir -p "$CHROMIUM/out/KeshOS"
